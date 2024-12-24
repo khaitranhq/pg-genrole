@@ -1,0 +1,29 @@
+{
+  "name": "pg-rolegen",
+  "version": "1.0.0",
+  "description": "An npm package to automate creating roles for all databases in a PostgreSQL server",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "prepare": "npm run build",
+  "keywords": [],
+  "author": "Lewis Tran",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@trivago/prettier-plugin-sort-imports": "^5.2.0",
+    "@types/eslint__js": "^8.42.3",
+    "@types/pg": "^8.11.10",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.2"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}
