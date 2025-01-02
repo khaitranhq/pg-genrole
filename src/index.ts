@@ -20,6 +20,7 @@ export class DatabaseManager {
   }
 
   async refreshRolesPermissions(): Promise<void> {
+    this.log('Start refreshing roles permissionsss');
     await this._globalClient.connect();
 
     this.log('Start refreshing roles permissions');
@@ -179,15 +180,15 @@ export class DatabaseManager {
 
     await client.query(`GRANT CONNECT ON DATABASE "${database}" TO "${role}";`);
 
-    // grant permission for foreign server
-    const foreignServers = await client.query(
-      'SELECT srvname FROM pg_foreign_server'
-    );
-    for (const foreignServer of foreignServers.rows) {
-      await client.query(
-        `GRANT USAGE ON FOREIGN SERVER "${foreignServer.srvname}" TO "${role}";`
-      );
-    }
+    // // grant permission for foreign server
+    // const foreignServers = await client.query(
+    //   'SELECT srvname FROM pg_foreign_server'
+    // );
+    // for (const foreignServer of foreignServers.rows) {
+    //   await client.query(
+    //     `GRANT USAGE ON FOREIGN SERVER "${foreignServer.srvname}" TO "${role}";`
+    //   );
+    // }
 
     for (const schema of schemas) {
       this.log(`Grant permission for schema ${schema}`);

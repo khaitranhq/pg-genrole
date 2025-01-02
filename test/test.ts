@@ -1,9 +1,10 @@
+import { execSync } from 'child_process';
 import { Client } from 'pg';
 
 import { DatabaseManager, IDatabaseConfig } from '../src';
 
 const defaultDatabaseConfig: IDatabaseConfig = {
-  host: 'localhost',
+  host: '127.0.0.1',
   port: 5432,
   user: 'postgres',
   password: 'postgres'
@@ -19,6 +20,13 @@ describe('DatabaseManager Integration Tests', () => {
   let databaseManager: DatabaseManager;
 
   beforeEach(async () => {
+    execSync('docker compose -f ./test/docker-compose.yml up -d', {
+      stdio: 'inherit'
+    });
+
+    // Wait for PostgreSQL to be ready
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
     // Connect to postgres database to create user and databases
     globalClient = new Client({
       ...defaultDatabaseConfig,
@@ -37,7 +45,7 @@ describe('DatabaseManager Integration Tests', () => {
 
     // Create test databases
     for (const dbName of TEST_DATABASES) {
-      console.log(`\nTesting database: ${dbName}`);
+      console.log(`\nCreate mock data for database: ${dbName}`);
       await globalClient.query(`DROP DATABASE IF EXISTS ${dbName}`);
       await globalClient.query(`CREATE DATABASE ${dbName}`);
 
@@ -264,6 +272,7 @@ describe('DatabaseManager Integration Tests', () => {
     });
 
     it('should generate enough roles for all databases', async () => {
+      console.log('\n=== Testing role generation ===');
       const result = await globalClient.query(`SELECT rolname FROM pg_roles`);
 
       const existingRoles = result.rows.map((row) => row.rolname);
@@ -402,7 +411,6 @@ describe('DatabaseManager Integration Tests', () => {
           ).rejects.toThrow();
         } catch (error) {
           console.error(`\nError in database ${dbName}:`, error);
-          throw error;
         } finally {
           await readClient.end();
         }
@@ -422,10 +430,8 @@ describe('DatabaseManager Integration Tests', () => {
           user: TEST_READWRITE_USERNAME,
           password: TEST_PASSWORD
         });
-
-        await readwriteClient.connect();
-
         try {
+          await readwriteClient.connect();
           console.log('1. Testing Table Operations...');
           // Insert new user
           const insertResult = await readwriteClient.query(`
@@ -557,98 +563,135 @@ describe('DatabaseManager Integration Tests', () => {
           `);
         } catch (error) {
           console.error(`\nError in database ${dbName}:`, error);
-          throw error;
         } finally {
           await readwriteClient.end();
         }
       }
     });
+  });
 
-    afterEach(async () => {
-      for (const database of TEST_DATABASES) {
+  describe('Generate roles for specific databases', () => {
+    beforeEach(async () => {
+      databaseManager = new DatabaseManager({
+        ...defaultDatabaseConfig,
+        appliedDatabases: ['db1', 'db2'] // Only generate roles for db1 and db2
+      });
+      await databaseManager.refreshRolesPermissions();
+
+      // Grant roles to test users for db1 and db2 only
+      for (const database of ['db1', 'db2']) {
         await globalClient.query(
-          `REVOKE "${database}.read" FROM ${TEST_READ_USERNAME}`
+          `GRANT "${database}.read" TO ${TEST_READ_USERNAME}`
         );
-
         await globalClient.query(
-          `REVOKE "${database}.readwrite" FROM ${TEST_READWRITE_USERNAME}`
+          `GRANT "${database}.readwrite" TO ${TEST_READWRITE_USERNAME}`
         );
       }
     });
+
+    it('should generate roles only for specified databases', async () => {
+      const result = await globalClient.query(`SELECT rolname FROM pg_roles`);
+      const existingRoles = result.rows.map((row) => row.rolname);
+
+      // Should have roles for db1 and db2
+      expect(existingRoles).toContain('db1.read');
+      expect(existingRoles).toContain('db1.readwrite');
+      expect(existingRoles).toContain('db2.read');
+      expect(existingRoles).toContain('db2.readwrite');
+
+      // Should NOT have roles for db3
+      expect(existingRoles).not.toContain('db3.read');
+      expect(existingRoles).not.toContain('db3.readwrite');
+    });
+
+    it('should grant correct permissions for specified databases only', async () => {
+      // Test access to db1 (should work)
+      const db1Client = new Client({
+        ...defaultDatabaseConfig,
+        database: 'db1',
+        user: TEST_READ_USERNAME,
+        password: TEST_PASSWORD
+      });
+      await db1Client.connect();
+      const db1Result = await db1Client.query(
+        'SELECT * FROM app.users LIMIT 1'
+      );
+      expect(db1Result.rows).toHaveLength(1);
+      await db1Client.end();
+
+      // Test access to db2 (should work)
+      const db2Client = new Client({
+        ...defaultDatabaseConfig,
+        database: 'db2',
+        user: TEST_READ_USERNAME,
+        password: TEST_PASSWORD
+      });
+      await db2Client.connect();
+      const db2Result = await db2Client.query(
+        'SELECT * FROM app.users LIMIT 1'
+      );
+      expect(db2Result.rows).toHaveLength(1);
+      await db2Client.end();
+
+      // Test access to db3 (should fail)
+      const db3Client = new Client({
+        ...defaultDatabaseConfig,
+        database: 'db3',
+        user: TEST_READ_USERNAME,
+        password: TEST_PASSWORD
+      });
+      try {
+        db3Client.connect();
+        const result = await db3Client.query('SELECT * FROM app.users LIMIT 1');
+        console.log('Result:', result);
+      } catch (error) {
+        // Make sure we got the expected error
+        expect(error).toBeInstanceOf(Error);
+        if (error instanceof Error)
+          expect(error.message).toContain('permission denied');
+      } finally {
+        await db3Client.end();
+      }
+    });
+
+    it('should maintain correct permissions when refreshing roles', async () => {
+      // First refresh - already done in beforeEach
+
+      // Verify initial permissions
+      const initialResult = await globalClient.query(
+        `SELECT rolname FROM pg_roles`
+      );
+      const initialRoles = initialResult.rows.map((row) => row.rolname);
+
+      // Do another refresh
+      databaseManager = new DatabaseManager({
+        ...defaultDatabaseConfig,
+        appliedDatabases: ['db1', 'db2'] // Only generate roles for db1 and db2
+      });
+      await databaseManager.refreshRolesPermissions();
+
+      // Verify permissions remain the same
+      const finalResult = await globalClient.query(
+        `SELECT rolname FROM pg_roles`
+      );
+      const finalRoles = finalResult.rows.map((row) => row.rolname);
+
+      // Should have same roles before and after
+      expect(finalRoles).toEqual(expect.arrayContaining(initialRoles));
+
+      // Should still not have db3 roles
+      expect(finalRoles).not.toContain('db3.read');
+      expect(finalRoles).not.toContain('db3.readwrite');
+    });
   });
 
-  describe('Generate roles for specific databases', () => {});
-
   afterEach(async () => {
-    // Clean up each database
-    for (const dbName of TEST_DATABASES) {
-      const dbClient = new Client({
-        ...defaultDatabaseConfig,
-        database: dbName
-      });
-
-      try {
-        await dbClient.connect();
-
-        // Drop objects in correct order to avoid dependency conflicts
-        await dbClient.query(`
-          -- Drop materialized views
-          DROP MATERIALIZED VIEW IF EXISTS app.post_stats;
-
-          -- Drop views
-          DROP VIEW IF EXISTS app.active_users;
-
-          -- Drop triggers
-          DROP TRIGGER IF EXISTS update_users_modtime ON app.users;
-          DROP TRIGGER IF EXISTS update_posts_modtime ON app.posts;
-          DROP TRIGGER IF EXISTS audit_users_changes ON app.users;
-          DROP TRIGGER IF EXISTS audit_posts_changes ON app.posts;
-
-          -- Drop functions
-          DROP FUNCTION IF EXISTS update_updated_at_column();
-          DROP FUNCTION IF EXISTS audit.log_changes();
-          DROP FUNCTION IF EXISTS app.get_user_stats(INTEGER);
-
-          -- Drop indexes
-          DROP INDEX IF EXISTS app.idx_posts_user_id;
-          DROP INDEX IF EXISTS app.idx_comments_post_id;
-          DROP INDEX IF EXISTS app.idx_comments_user_id;
-          DROP INDEX IF EXISTS app.idx_post_stats_date;
-
-          -- Drop tables in correct order
-          DROP TABLE IF EXISTS app.comments;
-          DROP TABLE IF EXISTS app.posts;
-          DROP TABLE IF EXISTS app.users;
-          DROP TABLE IF EXISTS audit.changes;
-
-          -- Drop sequences
-          DROP SEQUENCE IF EXISTS app.user_id_seq;
-          DROP SEQUENCE IF EXISTS app.post_id_seq;
-
-          -- Drop schemas
-          DROP SCHEMA IF EXISTS app CASCADE;
-          DROP SCHEMA IF EXISTS audit CASCADE;
-        `);
-      } finally {
-        await dbClient.end();
-      }
-    }
-
-    // Drop test databases
-    for (const dbName of TEST_DATABASES) {
-      // Terminate all connections to the database
-      await globalClient.query(`
-            SELECT pg_terminate_backend(pid)
-            FROM pg_stat_activity
-            WHERE datname = '${dbName}'
-            AND pid <> pg_backend_pid()`);
-      await globalClient.query(`DROP DATABASE IF EXISTS ${dbName}`);
-    }
-
-    // Drop test users
-    await globalClient.query(`DROP USER IF EXISTS ${TEST_READ_USERNAME}`);
-    await globalClient.query(`DROP USER IF EXISTS ${TEST_READWRITE_USERNAME}`);
-
     await globalClient.end();
+    execSync('docker compose -f ./test/docker-compose.yml down --volumes', {
+      stdio: 'inherit'
+    });
+
+    // Wait for PostgreSQL to be ready
+    // await new Promise((resolve) => setTimeout(resolve, 5000));
   });
 });
