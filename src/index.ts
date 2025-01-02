@@ -5,7 +5,6 @@ export interface IDatabaseConfig {
   readonly port: number;
   readonly user: string;
   readonly password: string;
-  readonly appliedDatabases?: string[];
 }
 
 export class DatabaseManager {
@@ -19,18 +18,18 @@ export class DatabaseManager {
     this._isDebugging = isDebugging;
   }
 
-  async refreshRolesPermissions(): Promise<void> {
+  async refreshRolesPermissions(
+    appliedDatabases: string[] | undefined = undefined
+  ): Promise<void> {
     this.log('Start refreshing roles permissionsss');
     await this._globalClient.connect();
 
     this.log('Start refreshing roles permissions');
     const existingDatabases: string[] = await this.listDatabases();
 
-    const appliedDatabases: string[] =
-      this._databaseConfig.appliedDatabases &&
-      this._databaseConfig.appliedDatabases.length > 0
-        ? this._databaseConfig.appliedDatabases
-        : existingDatabases;
+    if (!appliedDatabases || appliedDatabases.length === 0) {
+      appliedDatabases = existingDatabases;
+    }
 
     for (const database of appliedDatabases) {
       if (!existingDatabases.includes(database))

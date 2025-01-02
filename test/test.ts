@@ -255,9 +255,7 @@ describe('DatabaseManager Integration Tests', () => {
 
   describe('Generate roles for all databases', () => {
     beforeEach(async () => {
-      databaseManager = new DatabaseManager({
-        ...defaultDatabaseConfig
-      });
+      databaseManager = new DatabaseManager(defaultDatabaseConfig);
       await databaseManager.refreshRolesPermissions();
 
       for (const database of TEST_DATABASES) {
@@ -572,11 +570,8 @@ describe('DatabaseManager Integration Tests', () => {
 
   describe('Generate roles for specific databases', () => {
     beforeEach(async () => {
-      databaseManager = new DatabaseManager({
-        ...defaultDatabaseConfig,
-        appliedDatabases: ['db1', 'db2'] // Only generate roles for db1 and db2
-      });
-      await databaseManager.refreshRolesPermissions();
+      databaseManager = new DatabaseManager(defaultDatabaseConfig);
+      await databaseManager.refreshRolesPermissions(['db1', 'db2']);
 
       // Grant roles to test users for db1 and db2 only
       for (const database of ['db1', 'db2']) {
@@ -664,11 +659,8 @@ describe('DatabaseManager Integration Tests', () => {
       const initialRoles = initialResult.rows.map((row) => row.rolname);
 
       // Do another refresh
-      databaseManager = new DatabaseManager({
-        ...defaultDatabaseConfig,
-        appliedDatabases: ['db1', 'db2'] // Only generate roles for db1 and db2
-      });
-      await databaseManager.refreshRolesPermissions();
+      databaseManager = new DatabaseManager(defaultDatabaseConfig);
+      await databaseManager.refreshRolesPermissions(['db1', 'db2']);
 
       // Verify permissions remain the same
       const finalResult = await globalClient.query(
