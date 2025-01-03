@@ -1,9 +1,9 @@
 {
   "name": "pg-rolegen",
-  "version": "1.0.3",
+  "version": "1.0.0",
   "description": "An npm package to automate creating roles for all databases in a PostgreSQL server",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "jest",
