@@ -415,6 +415,34 @@ describe('DatabaseManager Integration Tests', () => {
       }
     });
 
+    it('should set correct ownership of materialized views', async () => {
+      console.log('\n=== Testing materialized view ownership ===');
+      for (const dbName of TEST_DATABASES) {
+        const dbClient = new Client({
+          ...defaultDatabaseConfig,
+          database: dbName
+        });
+        await dbClient.connect();
+
+        const ownershipQuery = `
+          SELECT mv.schemaname, mv.matviewname, mv.matviewowner as owner
+          FROM pg_matviews mv
+          INNER JOIN pg_roles r ON r.rolname = mv.matviewowner
+          WHERE mv.schemaname = 'app'
+        `;
+
+        const result = await dbClient.query(ownershipQuery);
+        await dbClient.end();
+
+        // Check post_stats materialized view ownership
+        const postStats = result.rows.find(
+          (row) => row.matviewname === 'post_stats'
+        );
+        expect(postStats).toBeDefined();
+        expect(postStats?.owner).toBe(`${dbName}.readwrite`);
+      }
+    });
+
     it('should grant correct permissions to readwrite roles', async () => {
       console.log('\n=== Testing readwrite permissions ===');
       // Test for each database
