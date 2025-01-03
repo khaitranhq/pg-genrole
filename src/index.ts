@@ -43,7 +43,7 @@ export class DatabaseManager {
   }
 
   private log(message: string): void {
-    if (this._isDebugging) this.log(message);
+    if (this._isDebugging) console.log(message);
   }
 
   private getDatabaseClient(databaseName: string): Client {
