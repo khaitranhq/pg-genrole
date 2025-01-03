@@ -1,5 +1,5 @@
 {
-  "name": "pg-rolegen",
+  "name": "pg-genrole",
   "version": "1.0.0",
   "description": "An npm package to automate creating roles for all databases in a PostgreSQL server",
   "main": "dist/src/index.js",
