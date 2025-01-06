@@ -1,4 +1,4 @@
-# pg-rolegen
+# pg-genrole
 
 A Node.js package that automates the creation and management of PostgreSQL roles and permissions across multiple databases.
 
@@ -14,15 +14,17 @@ A Node.js package that automates the creation and management of PostgreSQL roles
 ## Installation
 
 ```bash
-npm install pg-rolegen
+npm install pg-genrole
 # or
-yarn add pg-rolegen
+yarn add pg-genrole
+# or
+pnpm add pg-genrole
 ```
 
 ## Quick Start
 
 ```typescript
-import { DatabaseManager } from 'pg-rolegen';
+import { DatabaseManager } from 'pg-genrole';
 
 const config = {
   host: 'localhost',

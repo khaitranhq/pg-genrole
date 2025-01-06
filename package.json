@@ -1,6 +1,6 @@
 {
   "name": "pg-genrole",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "homepage": "https://github.com/khaitranhq/pg-genrole",
   "description": "An npm package to automate creating roles for all databases in a PostgreSQL server",
   "main": "dist/src/index.js",
