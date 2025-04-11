@@ -1,7 +1,6 @@
 -- Create database
 CREATE DATABASE db2;
 
-
 -- Now set up test database with the same schema
 \c db2;
 

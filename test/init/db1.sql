@@ -1,3 +1,6 @@
+-- Create database
+CREATE DATABASE db1;
+
 -- Connect to development database
 \c db1;
 
