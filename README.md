@@ -23,6 +23,8 @@ pnpm add pg-genrole
 
 ## Quick Start
 
+### Using as a Node.js Package
+
 ```typescript
 import { DatabaseManager } from 'pg-genrole';
 
@@ -38,6 +40,47 @@ const manager = new DatabaseManager(config);
 // Create roles for specific databases
 await manager.refreshRolesPermissions(['db1', 'db2']);
 ```
+
+### Using Docker Image
+
+You can also use the pre-built Docker image to manage your PostgreSQL roles:
+
+```yaml
+# docker-compose.yml
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    
+  genrole:
+    image: khaitranhq/pg-genrole:latest
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      # Optional: Specify databases to manage (comma-separated)
+      # LIST_DATABASES: db1,db2
+      # Optional: Enable debug logging
+      DEBUG: true
+    depends_on:
+      - postgres
+```
+
+Run with:
+
+```bash
+docker-compose up -d
+```
+
+The Docker image will automatically:
+1. Connect to your PostgreSQL server
+2. Create appropriate read and readwrite roles for each database
+3. Set up all necessary permissions
 
 ## Permissions Overview
 
