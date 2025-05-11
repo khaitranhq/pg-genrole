@@ -20,7 +20,7 @@ describe('DatabaseManager Integration Tests', () => {
   let databaseManager: DatabaseManager;
 
   beforeEach(async () => {
-    execSync('docker compose -f ./test/docker-compose.yml up -d', {
+    execSync('docker compose -f ./test/compose.yml up -d', {
       stdio: 'inherit'
     });
 
@@ -707,7 +707,7 @@ describe('DatabaseManager Integration Tests', () => {
 
   afterEach(async () => {
     await globalClient.end();
-    execSync('docker compose -f ./test/docker-compose.yml down --volumes', {
+    execSync('docker compose -f ./test/compose.yml down --volumes', {
       stdio: 'inherit'
     });
 
