@@ -54,8 +54,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
-    
+      - '5432:5432'
+
   genrole:
     image: khaitranhq/pg-genrole:latest
     environment:
@@ -78,6 +78,7 @@ docker-compose up -d
 ```
 
 The Docker image will automatically:
+
 1. Connect to your PostgreSQL server
 2. Create appropriate read and readwrite roles for each database
 3. Set up all necessary permissions
