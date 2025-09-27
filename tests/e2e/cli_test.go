@@ -63,7 +63,7 @@ func (suite *CLITestSuite) buildBinary() {
 	suite.binaryPath = filepath.Join(tempDir, "pg-genrole")
 
 	// Build the binary
-	cmd := exec.Command("go", "build", "-o", suite.binaryPath, "../../../cmd/pg-genrole")
+	cmd := exec.Command("go", "build", "-o", suite.binaryPath, "../../cmd/pg-genrole")
 	output, err := cmd.CombinedOutput()
 	require.NoError(suite.T(), err, "Failed to build binary: %s", string(output))
 
