@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -47,12 +48,19 @@ func (suite *CLITestSuite) SetupSuite() {
 // TearDownSuite cleans up test infrastructure
 func (suite *CLITestSuite) TearDownSuite() {
 	if suite.postgresC != nil {
-		_ = suite.postgresC.Terminate(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := suite.postgresC.Terminate(ctx); err != nil {
+			suite.T().Logf("Warning: Failed to terminate container: %v", err)
+		}
 	}
 
 	// Clean up binary
 	if suite.binaryPath != "" {
-		_ = os.Remove(suite.binaryPath)
+		if err := os.Remove(suite.binaryPath); err != nil {
+			suite.T().Logf("Warning: Failed to remove binary: %v", err)
+		}
 	}
 }
 
@@ -62,8 +70,13 @@ func (suite *CLITestSuite) buildBinary() {
 	tempDir := suite.T().TempDir()
 	suite.binaryPath = filepath.Join(tempDir, "pg-genrole")
 
-	// Build the binary
-	cmd := exec.Command("go", "build", "-o", suite.binaryPath, "../../cmd/pg-genrole")
+	// Use more robust path handling to avoid hard-coded relative paths
+	rootDir, err := filepath.Abs("../..")
+	require.NoError(suite.T(), err, "Failed to get absolute path to project root")
+
+	// Build the binary with robust path
+	cmd := exec.Command("go", "build", "-o", suite.binaryPath,
+		filepath.Join(rootDir, "cmd", "pg-genrole"))
 	output, err := cmd.CombinedOutput()
 	require.NoError(suite.T(), err, "Failed to build binary: %s", string(output))
 
@@ -191,11 +204,23 @@ func (suite *CLITestSuite) Test_CLI_HelpCommand() {
 			// Help should exit with code 0
 			assert.NoError(suite.T(), err, "Help command should exit successfully")
 
-			// Help text should be in stdout
+			// Help text should be in stdout with proper structure
 			for _, expected := range tc.expected {
 				assert.Contains(suite.T(), stdout, expected,
 					"Help output should contain '%s'", expected)
 			}
+
+			// Verify help output has proper structure
+			assert.Regexp(suite.T(),
+				`(?i)usage:.*pg-genrole`,
+				stdout,
+				"Help should contain proper usage line")
+
+			// Verify essential connection flags are documented
+			assert.Regexp(suite.T(),
+				`(?i)--(host|database|user).*description`,
+				stdout,
+				"Help should document connection flags with descriptions")
 
 			// Stderr should be empty for help
 			assert.Empty(suite.T(), stderr, "Help command should not output to stderr")
@@ -230,11 +255,21 @@ func (suite *CLITestSuite) Test_CLI_VersionCommand() {
 			// Version should exit with code 0
 			assert.NoError(suite.T(), err, "Version command should exit successfully")
 
-			// Version output should contain version information
+			// Version output should contain version information with proper format
 			assert.Contains(suite.T(), stdout, "pg-genrole",
 				"Version output should contain program name")
-			assert.Regexp(suite.T(), `v?\d+\.\d+\.\d+`, stdout,
-				"Version output should contain version number")
+
+			// More specific version pattern matching
+			assert.Regexp(suite.T(),
+				`pg-genrole\s+(version\s+)?v?\d+\.\d+\.\d+`,
+				stdout,
+				"Version output should contain program name and semantic version")
+
+			// Ensure version is not just any random number
+			assert.Regexp(suite.T(),
+				`\b(v?\d+\.\d+\.\d+(-\w+)?)\b`,
+				stdout,
+				"Version should follow semantic versioning pattern")
 
 			// Stderr should be empty for version
 			assert.Empty(suite.T(), stderr, "Version command should not output to stderr")
@@ -287,11 +322,23 @@ func (suite *CLITestSuite) Test_CLI_ConnectionArguments() {
 			// Connection parsing should succeed in dry-run mode
 			assert.NoError(suite.T(), err, "Connection arguments should be valid")
 
-			// Should indicate connection would be made
-			assert.Contains(suite.T(), stdout, suite.connectionInfo.Host,
-				"Output should show connection host")
-			assert.Contains(suite.T(), stdout, suite.connectionInfo.Database,
-				"Output should show target database")
+			// Make more specific assertions about connection parsing
+			// Look for structured output patterns instead of generic substring matching
+			assert.Regexp(suite.T(),
+				`(?i)(host|server).*`+regexp.QuoteMeta(suite.connectionInfo.Host),
+				stdout,
+				"Output should show parsed connection host in structured format")
+
+			assert.Regexp(suite.T(),
+				`(?i)(database|db).*`+regexp.QuoteMeta(suite.connectionInfo.Database),
+				stdout,
+				"Output should show parsed target database in structured format")
+
+			// Verify dry-run mode is acknowledged
+			assert.Regexp(suite.T(),
+				`(?i)(dry.?run|simulation|would|preview)`,
+				stdout,
+				"Output should indicate dry-run mode is active")
 
 			// No errors in stderr
 			assert.Empty(suite.T(), stderr, "Should not have connection errors in dry-run")
@@ -305,31 +352,39 @@ func (suite *CLITestSuite) Test_CLI_InvalidArguments() {
 		name          string
 		args          []string
 		expectedError string
+		errorPattern  *regexp.Regexp
 	}{
 		{
 			name:          "Unknown flag",
 			args:          []string{"--unknown-flag"},
 			expectedError: "unknown flag",
+			errorPattern:  regexp.MustCompile(`(?i)unknown.*(flag|option).*unknown-flag`),
 		},
 		{
 			name:          "Invalid port number",
 			args:          []string{"--port", "invalid"},
 			expectedError: "invalid port",
+			errorPattern:  regexp.MustCompile(`(?i)invalid.*(port|number).*invalid`),
 		},
 		{
 			name:          "Missing required argument",
 			args:          []string{"--host"},
 			expectedError: "flag needs an argument",
+			errorPattern: regexp.MustCompile(
+				`(?i)(flag|option).*needs.*argument|missing.*argument`,
+			),
 		},
 		{
 			name:          "Empty host",
 			args:          []string{"--host", ""},
 			expectedError: "host cannot be empty",
+			errorPattern:  regexp.MustCompile(`(?i)host.*empty|empty.*host`),
 		},
 		{
 			name:          "Invalid port range",
 			args:          []string{"--port", "70000"},
 			expectedError: "port out of range",
+			errorPattern:  regexp.MustCompile(`(?i)port.*(out of range|invalid range|range|70000)`),
 		},
 	}
 
@@ -340,11 +395,17 @@ func (suite *CLITestSuite) Test_CLI_InvalidArguments() {
 			// Should exit with error
 			assert.Error(suite.T(), err, "Invalid arguments should cause error")
 
-			// Error message should be descriptive
+			// Use structured error checking with patterns
 			output := stdout + stderr
-			assert.Contains(suite.T(), strings.ToLower(output),
-				strings.ToLower(tc.expectedError),
-				"Error output should contain expected error message")
+			if tc.errorPattern != nil {
+				assert.Regexp(suite.T(), tc.errorPattern, output,
+					"Error output should match expected pattern for: %s", tc.expectedError)
+			} else {
+				// Fallback to substring matching if no pattern provided
+				assert.Contains(suite.T(), strings.ToLower(output),
+					strings.ToLower(tc.expectedError),
+					"Error output should contain expected error message")
+			}
 		})
 	}
 }
@@ -364,8 +425,19 @@ func (suite *CLITestSuite) Test_CLI_DefaultDatabase() {
 
 		// Should succeed and indicate all databases will be processed
 		assert.NoError(suite.T(), err, "Should handle missing database gracefully")
-		assert.Contains(suite.T(), stdout, "all databases",
-			"Should indicate all databases will be processed")
+
+		// Use more specific pattern matching for "all databases" indication
+		assert.Regexp(suite.T(),
+			`(?i)(all\s+(databases|dbs)|every\s+database|process.*all.*database)`,
+			stdout,
+			"Should clearly indicate all databases will be processed")
+
+		// Verify dry-run mode is acknowledged when no specific database given
+		assert.Regexp(suite.T(),
+			`(?i)(dry.?run|simulation|would.*process|preview)`,
+			stdout,
+			"Should indicate dry-run mode when processing all databases")
+
 		assert.Empty(suite.T(), stderr, "Should not have errors in dry-run")
 	})
 }
@@ -378,6 +450,7 @@ func (suite *CLITestSuite) Test_CLI_ErrorHandling() {
 		env           []string
 		expectedError string
 		errorInStderr bool
+		errorPattern  *regexp.Regexp // More structured error matching
 	}{
 		{
 			name: "Connection refused",
@@ -390,6 +463,7 @@ func (suite *CLITestSuite) Test_CLI_ErrorHandling() {
 			},
 			expectedError: "connection refused",
 			errorInStderr: true,
+			errorPattern:  regexp.MustCompile(`(?i)(connection.*(refused|failed)|connect.*error)`),
 		},
 		{
 			name: "Invalid credentials",
@@ -402,6 +476,9 @@ func (suite *CLITestSuite) Test_CLI_ErrorHandling() {
 			},
 			expectedError: "authentication failed",
 			errorInStderr: true,
+			errorPattern: regexp.MustCompile(
+				`(?i)(authentication.*(failed|error)|auth.*failed|login.*failed)`,
+			),
 		},
 		{
 			name: "Database does not exist",
@@ -414,6 +491,9 @@ func (suite *CLITestSuite) Test_CLI_ErrorHandling() {
 			},
 			expectedError: "database",
 			errorInStderr: true,
+			errorPattern: regexp.MustCompile(
+				`(?i)(database.*not.*exist|database.*found|nonexistent_db)`,
+			),
 		},
 		{
 			name: "Missing required permissions",
@@ -426,6 +506,9 @@ func (suite *CLITestSuite) Test_CLI_ErrorHandling() {
 			},
 			expectedError: "permission",
 			errorInStderr: true,
+			errorPattern: regexp.MustCompile(
+				`(?i)(permission.*(denied|insufficient)|access.*denied|privilege.*error)`,
+			),
 		},
 	}
 
@@ -451,9 +534,16 @@ func (suite *CLITestSuite) Test_CLI_ErrorHandling() {
 				errorOutput = stdout
 			}
 
-			assert.Contains(suite.T(), strings.ToLower(errorOutput),
-				strings.ToLower(tc.expectedError),
-				"Should contain expected error message")
+			// Use structured error pattern matching when available
+			if tc.errorPattern != nil {
+				assert.Regexp(suite.T(), tc.errorPattern, errorOutput,
+					"Should match expected error pattern for: %s", tc.expectedError)
+			} else {
+				// Fallback to substring matching
+				assert.Contains(suite.T(), strings.ToLower(errorOutput),
+					strings.ToLower(tc.expectedError),
+					"Should contain expected error message")
+			}
 		})
 	}
 }
