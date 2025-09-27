@@ -53,6 +53,24 @@ PostgreSQL Version Compatibility: >= 13`,
   # Using short flags
   pg-genrole -H localhost -p 5432 -u admin -P secret -d myapp`,
 	SilenceUsage: true,
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		// Perform custom validation before Cobra's required flag validation
+		// This allows us to provide more specific error messages
+		
+		// Check for empty host specifically
+		if cmd.Flag("host").Changed && cfg.Host == "" {
+			return fmt.Errorf("host cannot be empty")
+		}
+		
+		// Check for invalid port range specifically
+		if cmd.Flag("port").Changed {
+			if cfg.Port <= 0 || cfg.Port > 65535 {
+				return fmt.Errorf("port out of range: %d (must be 1-65535)", cfg.Port)
+			}
+		}
+		
+		return nil
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Set defaults and validate configuration
 		cfg.SetDefaults()
