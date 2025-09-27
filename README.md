@@ -1,5 +1,7 @@
 # Automation tool to create RO, RW and admin roles for PostgreSQL databases
 
+**PostgreSQL Version Compatibility**: >=13
+
 ## PostgreSQL Permission Matrix
 
 This matrix shows the permissions granted to different user types (RO, RW, Admin) for various PostgreSQL objects.
@@ -73,6 +75,9 @@ This matrix shows the permissions granted to different user types (RO, RW, Admin
 | **Tablespaces**           | CREATE                         | ❌             | ❌              | ✅    |
 |                           | ALTER                          | ❌             | ❌              | ✅    |
 |                           | DROP                           | ❌             | ❌              | ✅    |
+| **Extensions**            | USAGE                          | ✅             | ✅              | ✅    |
+|                           | CREATE                         | ❌             | ❌              | ✅    |
+|                           | DROP                           | ❌             | ❌              | ✅    |
 
 ### System-Level Permissions
 
@@ -101,6 +106,14 @@ This matrix shows the permissions granted to different user types (RO, RW, Admin
 | pg_dump (logical)       | ✅             | ✅              | ✅    |
 | pg_restore              | ❌             | ❌              | ✅    |
 | Base backup             | ❌             | ❌              | ✅    |
+
+### Connection Management
+
+| Permission             | Read-Only (RO) | Read-Write (RW) | Admin     |
+| ---------------------- | -------------- | --------------- | --------- |
+| Connection limit       | Default        | Default         | Unlimited |
+| pg_cancel_backend()    | ❌             | ❌              | ✅        |
+| pg_terminate_backend() | ❌             | ❌              | ✅        |
 
 ### Legend
 
