@@ -63,9 +63,8 @@ Our testing infrastructure provides isolated, reproducible environments across m
 | **Testcontainers for Go** | Isolated PostgreSQL instances | Local development and CI         |
 | **Docker**                | Container orchestration       | Database environment management  |
 | **pgx/v5**                | PostgreSQL driver             | Database connections and queries |
-
-| **testify** | Test assertions | Structured test validation |
-| **Go testing** | Parallel execution | Concurrent test performance |
+| **testify**               | Test assertions               | Structured test validation       |
+| **Go testing**            | Parallel execution            | Concurrent test performance      |
 
 #### Environment Types
 
