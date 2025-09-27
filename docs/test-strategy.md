@@ -28,19 +28,14 @@ Our testing strategy focuses on six core objectives:
    - Validate system-level permissions and constraints
 
 4. **Error Handling & Edge Cases**
-   - Test failure scenarios and recovery mechanisms
-   - Validate error messages and user feedback
+   - Test failure scenarios
+   - Validate error messages
    - Ensure graceful handling of invalid inputs
 
 5. **Idempotency & Reliability**
    - Support multiple tool executions without breaking existing setups
    - Test role modification and updates
    - Validate cleanup and rollback capabilities
-
-6. **Role Hierarchy Management**
-   - Test proper role inheritance and dependency chains
-   - Validate role membership and privilege delegation
-   - Ensure secure role relationship management
 
 ### Success Criteria
 
@@ -91,7 +86,6 @@ var postgresVersions = []string{
 - **Fresh Containers**: Each test gets a clean PostgreSQL instance
 - **Unique Databases**: Dynamic database names with test identifiers
 - **Automatic Cleanup**: Container lifecycle management
-- **Environment Variables**: Standardized connection management
 - **Port Management**: Dynamic port allocation for parallel testing
 
 #### Schema-Based Isolation
@@ -106,37 +100,6 @@ var postgresVersions = []string{
 
 #### 1. Unit Tests (`internal/role/`)
 
-**Purpose**: Validate individual functions and core logic
-
-**Key Files**:
-
-- `role_creator_test.go` - Role creation logic
-- `permission_manager_test.go` - Permission assignment logic
-- `sql_generator_test.go` - SQL statement generation
-
-**Example Test Structure**:
-
-```go
-func TestGenerateRoleSQL(t *testing.T) {
-    tests := []struct {
-        name     string
-        roleType RoleType
-        dbName   string
-        expected []string
-    }{
-        {"ReadOnly Role", RoleTypeRO, "testdb", []string{...}},
-        {"ReadWrite Role", RoleTypeRW, "testdb", []string{...}},
-        {"Admin Role", RoleTypeAdmin, "testdb", []string{...}},
-    }
-
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            // Test implementation
-        })
-    }
-}
-```
-
 #### 2. End-to-End Tests (`tests/e2e/`)
 
 **Purpose**: Complete user workflow validation and component interaction testing
@@ -145,39 +108,12 @@ func TestGenerateRoleSQL(t *testing.T) {
 
 - Verify role creation for each type (RO, RW, Admin)
 - Validate role existence in PostgreSQL system catalogs
-- Test role attributes and properties
 
 ##### 2.2 Permission Verification Tests (`permission_verification_test.go`)
 
 - Systematic testing of each permission matrix entry
 - Positive permission validation (granted access)
 - Negative permission validation (denied access)
-
-```go
-func TestPermissionMatrix(t *testing.T) {
-    testCases := []PermissionTest{
-        // Table Permissions
-        {Object: "table", Permission: "SELECT", RO: true, RW: true, Admin: true},
-        {Object: "table", Permission: "INSERT", RO: false, RW: true, Admin: true},
-        {Object: "table", Permission: "DELETE", RO: false, RW: true, Admin: true},
-
-        // Schema Permissions
-        {Object: "schema", Permission: "USAGE", RO: true, RW: true, Admin: true},
-        {Object: "schema", Permission: "CREATE", RO: false, RW: false, Admin: true},
-
-        // System Permissions
-        {Object: "role", Permission: "CREATE", RO: false, RW: false, Admin: true},
-
-        // Complete matrix coverage...
-    }
-
-    for _, test := range testCases {
-        t.Run(fmt.Sprintf("%s_%s", test.Object, test.Permission), func(t *testing.T) {
-            // Permission validation logic
-        })
-    }
-}
-```
 
 ##### 2.3 Cross-Version Compatibility Tests (`version_compatibility_test.go`)
 

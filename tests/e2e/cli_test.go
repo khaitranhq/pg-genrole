@@ -462,4 +462,3 @@ func (suite *CLITestSuite) Test_CLI_ErrorHandling() {
 func TestCLISuite(t *testing.T) {
 	suite.Run(t, new(CLITestSuite))
 }
-

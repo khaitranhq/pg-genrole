@@ -2,6 +2,92 @@
 
 **PostgreSQL Version Compatibility**: >=13
 
+## Installation
+
+### From Source
+
+```bash
+go install github.com/user/pg-genrole/cmd/pg-genrole@latest
+```
+
+### Build from Repository
+
+```bash
+git clone https://github.com/user/pg-genrole.git
+cd pg-genrole
+go build -o pg-genrole cmd/pg-genrole/main.go
+```
+
+## CLI Usage
+
+### Basic Commands
+
+#### Help
+
+Display help information and available options:
+
+```bash
+pg-genrole -h
+pg-genrole --help
+pg-genrole help
+```
+
+#### Version
+
+Display version information:
+
+```bash
+pg-genrole -v
+pg-genrole --version
+pg-genrole version
+```
+
+### Connection Options
+
+The tool supports both long and short form connection flags:
+
+| Long Form    | Short Form | Description                              | Required |
+| ------------ | ---------- | ---------------------------------------- | -------- |
+| `--host`     | `-H`       | PostgreSQL server hostname or IP address | Yes      |
+| `--port`     | `-p`       | PostgreSQL server port (default: 5432)   | No       |
+| `--user`     | `-u`       | PostgreSQL username                      | Yes      |
+| `--password` | `-P`       | PostgreSQL password                      | Yes      |
+| `--database` | `-d`       | Specific database to process             | No\*     |
+
+> **Note:** If `--database` is not specified, the tool will process all accessible databases.
+
+### Additional Options
+
+| Option      | Description                                    |
+| ----------- | ---------------------------------------------- |
+| `--dry-run` | Show what would be done without making changes |
+
+### Usage Examples
+
+#### Process All Databases (Dry Run)
+
+```bash
+pg-genrole --host localhost --port 5432 --user admin --password secret --dry-run
+```
+
+#### Process Specific Database
+
+```bash
+pg-genrole --host db.example.com --user admin --password secret --database myapp
+```
+
+#### Using Short Flags
+
+```bash
+pg-genrole -H localhost -p 5432 -u admin -P secret -d myapp
+```
+
+#### Production Example
+
+```bash
+pg-genrole --host prod-db.company.com --port 5432 --user postgres --password $DB_PASSWORD --database production_app
+```
+
 ## PostgreSQL Permission Matrix
 
 This matrix shows the permissions granted to different user types (RO, RW, Admin) for various PostgreSQL objects.
