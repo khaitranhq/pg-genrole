@@ -120,6 +120,30 @@ func (suite *CLITestSuite) startPostgresContainer() {
 		Password: "testpass",
 		Database: "testdb",
 	}
+
+	// Create unprivileged_user for permission testing
+	suite.createUnprivilegedUser()
+}
+
+// createUnprivilegedUser creates an unprivileged user for permission testing
+func (suite *CLITestSuite) createUnprivilegedUser() {
+	ctx := context.Background()
+
+	// Create SQL commands to set up the unprivileged user
+	createUserSQL := []string{
+		"CREATE USER unprivileged_user WITH PASSWORD 'testpass';",
+		"GRANT CONNECT ON DATABASE testdb TO unprivileged_user;",
+		// Don't grant any other privileges to keep the user unprivileged
+	}
+
+	// Execute SQL commands to create the unprivileged user
+	for _, sql := range createUserSQL {
+		exitCode, _, err := suite.postgresC.Exec(ctx, []string{
+			"psql", "-U", "testuser", "-d", "testdb", "-c", sql,
+		})
+		require.NoError(suite.T(), err, "Failed to execute SQL: %s", sql)
+		require.Equal(suite.T(), 0, exitCode, "SQL command failed with non-zero exit code: %s", sql)
+	}
 }
 
 // runCommand executes the pg-genrole binary with given arguments
