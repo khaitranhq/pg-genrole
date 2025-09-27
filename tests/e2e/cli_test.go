@@ -175,6 +175,7 @@ func (suite *CLITestSuite) runCommandWithEnv(
 }
 
 // Test_CLI_HelpCommand tests the --help command line argument
+// Test_CLI_HelpCommand tests the --help command line argument
 func (suite *CLITestSuite) Test_CLI_HelpCommand() {
 	testCases := []struct {
 		name     string
@@ -185,38 +186,56 @@ func (suite *CLITestSuite) Test_CLI_HelpCommand() {
 			name: "Short help flag",
 			args: []string{"-h"},
 			expected: []string{
-				"pg-genrole",
-				"Usage:",
-				"PostgreSQL role automation tool",
+				"pg-genrole - PostgreSQL Role Generation Tool",
+				"Automates creation of Read-Only, Read-Write, and Admin roles",
+				"ROLE TYPES CREATED:",
+				"<database>_ro",
+				"<database>_rw", 
+				"<database>_admin",
+				"COMMANDS:",
+				"version",
+				"OPTIONS:",
 				"--database",
 				"--host",
 				"--port",
-				"--user",
+				"--user", 
 				"--password",
+				"--dry-run",
+				"EXAMPLES:",
 			},
 		},
 		{
 			name: "Long help flag",
 			args: []string{"--help"},
 			expected: []string{
-				"pg-genrole",
-				"Usage:",
-				"PostgreSQL role automation tool",
+				"pg-genrole - PostgreSQL Role Generation Tool",
+				"Automates creation of Read-Only, Read-Write, and Admin roles",
+				"ROLE TYPES CREATED:",
+				"<database>_ro",
+				"<database>_rw",
+				"<database>_admin", 
+				"COMMANDS:",
+				"version",
+				"OPTIONS:",
 				"--database",
 				"--host",
-				"--port",
+				"--port", 
 				"--user",
 				"--password",
+				"--dry-run",
+				"EXAMPLES:",
 			},
 		},
 		{
 			name: "Help command",
 			args: []string{"help"},
 			expected: []string{
-				"pg-genrole",
-				"Usage:",
-				"Commands:",
-				"Options:",
+				"pg-genrole - PostgreSQL Role Generation Tool",
+				"Automates creation of Read-Only, Read-Write, and Admin roles",
+				"ROLE TYPES CREATED:",
+				"COMMANDS:",
+				"OPTIONS:",
+				"EXAMPLES:",
 			},
 		},
 	}
@@ -234,17 +253,33 @@ func (suite *CLITestSuite) Test_CLI_HelpCommand() {
 					"Help output should contain '%s'", expected)
 			}
 
-			// Verify help output has proper structure
-			assert.Regexp(suite.T(),
-				`(?i)usage:.*pg-genrole`,
-				stdout,
-				"Help should contain proper usage line")
+			// Verify help output has proper structure and starts with tool description
+			assert.Contains(suite.T(), stdout, "pg-genrole - PostgreSQL Role Generation Tool",
+				"Help should start with proper tool description")
 
-			// Verify essential connection flags are documented
-			assert.Regexp(suite.T(),
-				`(?i)--(host|database|user).*description`,
-				stdout,
-				"Help should document connection flags with descriptions")
+			// Verify essential connection flags are documented with descriptions
+			assert.Contains(suite.T(), stdout, "PostgreSQL server hostname or IP address (required)",
+				"Help should document host flag with description")
+			assert.Contains(suite.T(), stdout, "PostgreSQL username (required)",
+				"Help should document user flag with description")
+			assert.Contains(suite.T(), stdout, "PostgreSQL password (required)",
+				"Help should document password flag with description")
+
+			// Verify sections are properly formatted (uppercase with colons)
+			assert.Contains(suite.T(), stdout, "COMMANDS:",
+				"Help should have properly formatted COMMANDS section")
+			assert.Contains(suite.T(), stdout, "OPTIONS:",
+				"Help should have properly formatted OPTIONS section")
+			assert.Contains(suite.T(), stdout, "EXAMPLES:",
+				"Help should have properly formatted EXAMPLES section")
+
+			// Verify examples are included
+			assert.Contains(suite.T(), stdout, "# Process all databases (dry run)",
+				"Help should include example usage")
+			assert.Contains(suite.T(), stdout, "# Process specific database",
+				"Help should include specific database example")
+			assert.Contains(suite.T(), stdout, "# Using short flags",
+				"Help should include short flags example")
 
 			// Stderr should be empty for help
 			assert.Empty(suite.T(), stderr, "Help command should not output to stderr")
@@ -252,6 +287,7 @@ func (suite *CLITestSuite) Test_CLI_HelpCommand() {
 	}
 }
 
+// Test_CLI_VersionCommand tests the --version command line argument
 // Test_CLI_VersionCommand tests the --version command line argument
 func (suite *CLITestSuite) Test_CLI_VersionCommand() {
 	testCases := []struct {
@@ -263,7 +299,7 @@ func (suite *CLITestSuite) Test_CLI_VersionCommand() {
 			args: []string{"-v"},
 		},
 		{
-			name: "Long version flag",
+			name: "Long version flag", 
 			args: []string{"--version"},
 		},
 		{
@@ -279,19 +315,31 @@ func (suite *CLITestSuite) Test_CLI_VersionCommand() {
 			// Version should exit with code 0
 			assert.NoError(suite.T(), err, "Version command should exit successfully")
 
-			// Version output should contain version information with proper format
-			assert.Contains(suite.T(), stdout, "pg-genrole",
-				"Version output should contain program name")
+			// Version output should contain specific format matching actual output
+			assert.Contains(suite.T(), stdout, "pg-genrole version",
+				"Version output should contain 'pg-genrole version'")
+			
+			assert.Contains(suite.T(), stdout, "PostgreSQL Role Generation Tool",
+				"Version output should contain tool description")
+			
+			assert.Contains(suite.T(), stdout, "Compatible with PostgreSQL 13+",
+				"Version output should contain PostgreSQL compatibility info")
+			
+			assert.Contains(suite.T(), stdout, "Copyright (c) 2024",
+				"Version output should contain copyright information")
+			
+			assert.Contains(suite.T(), stdout, "Licensed under MIT License",
+				"Version output should contain license information")
 
-			// More specific version pattern matching
+			// Verify semantic version pattern (e.g., "1.0.0")
 			assert.Regexp(suite.T(),
-				`pg-genrole\s+(version\s+)?v?\d+\.\d+\.\d+`,
+				`pg-genrole version \d+\.\d+\.\d+`,
 				stdout,
-				"Version output should contain program name and semantic version")
+				"Version output should follow 'pg-genrole version X.Y.Z' format")
 
-			// Ensure version is not just any random number
+			// Ensure version follows semantic versioning pattern
 			assert.Regexp(suite.T(),
-				`\b(v?\d+\.\d+\.\d+(-\w+)?)\b`,
+				`\b\d+\.\d+\.\d+(-\w+)?\b`,
 				stdout,
 				"Version should follow semantic versioning pattern")
 
