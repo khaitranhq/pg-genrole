@@ -30,6 +30,20 @@ func main() {
 		return
 	}
 
+	// Display connection information when in dry-run mode
+	if args.Config.DryRun {
+		fmt.Printf("Connection configuration:\n")
+		fmt.Printf("  Host: %s\n", args.Config.Host)
+		fmt.Printf("  Port: %d\n", args.Config.Port)
+		fmt.Printf("  User: %s\n", args.Config.User)
+		if args.Config.Database != "" {
+			fmt.Printf("  Database: %s\n", args.Config.Database)
+		} else {
+			fmt.Printf("  Database: all databases\n")
+		}
+		fmt.Println()
+	}
+
 	// Create database connection
 	ctx := context.Background()
 	conn, err := database.Connect(ctx, args.Config.DatabaseURL())

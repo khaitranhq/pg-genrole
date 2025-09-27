@@ -22,7 +22,7 @@ type Config struct {
 // Validate validates the configuration parameters
 func (c *Config) Validate() error {
 	if c.Host == "" {
-		return fmt.Errorf("database host is required")
+		return fmt.Errorf("host cannot be empty")
 	}
 	if c.User == "" {
 		return fmt.Errorf("database user is required")
@@ -31,7 +31,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("database password is required")
 	}
 	if c.Port <= 0 || c.Port > 65535 {
-		return fmt.Errorf("database port must be between 1 and 65535")
+		return fmt.Errorf("port out of range: %d (must be 1-65535)", c.Port)
 	}
 	return nil
 }

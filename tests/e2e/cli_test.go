@@ -500,7 +500,7 @@ func (suite *CLITestSuite) Test_CLI_ErrorHandling() {
 			args: []string{
 				"--host", suite.connectionInfo.Host,
 				"--port", suite.connectionInfo.Port,
-				"--user", "unprivileged_user", // Would need to be created
+				"--user", "unprivileged_user",
 				"--password", "testpass",
 				"--database", suite.connectionInfo.Database,
 			},
