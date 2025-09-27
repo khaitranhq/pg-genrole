@@ -221,6 +221,5 @@ This matrix shows the permissions granted to different user types (RO, RW, Admin
    - Always follow the principle of least privilege
    - Regularly audit role permissions
    - Use schema-level permissions for easier management
-   - Consider row-level security (RLS) for fine-grained access control
 
 5. **Implementation**: This automation tool creates roles with permissions according to this matrix, ensuring consistent security across PostgreSQL databases.
