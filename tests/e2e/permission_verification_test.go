@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -26,6 +25,7 @@ type PermissionVerificationTestSuite struct {
 	containers       map[string]*postgres.PostgresContainer
 	connectionInfos  map[string]ConnectionInfo
 	postgresVersions []string
+	currentVersion   string
 }
 
 // PermissionType represents different types of permissions to test
@@ -93,6 +93,15 @@ func (suite *PermissionVerificationTestSuite) SetupSuite() {
 // TearDownSuite cleans up all test resources
 func (suite *PermissionVerificationTestSuite) TearDownSuite() {
 	ctx := context.Background()
+
+	// Clean up role users from all containers
+	for version := range suite.containers {
+		conn, err := suite.getDBConnection(version)
+		if err == nil {
+			suite.cleanupAllRoleUsers(conn)
+			conn.Close(ctx)
+		}
+	}
 
 	// Terminate all containers
 	for _, container := range suite.containers {
@@ -191,6 +200,90 @@ func (suite *PermissionVerificationTestSuite) getDBConnection(version string) (*
 		connInfo.User, connInfo.Password, connInfo.Host, connInfo.Port, connInfo.Database)
 
 	return pgx.Connect(context.Background(), connStr)
+}
+
+// getCurrentVersion returns the current version being tested
+func (suite *PermissionVerificationTestSuite) getCurrentVersion() string {
+	return suite.currentVersion
+}
+
+// setCurrentVersion sets the current version being tested
+func (suite *PermissionVerificationTestSuite) setCurrentVersion(version string) {
+	suite.currentVersion = version
+}
+
+// getRoleConnection creates a database connection for a specific role user
+func (suite *PermissionVerificationTestSuite) getRoleConnection(
+	version, roleName string,
+) (*pgx.Conn, error) {
+	connInfo := suite.connectionInfos[version]
+	userName := roleName + "_user"
+	userPassword := "test_password_123"
+
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
+		userName, userPassword, connInfo.Host, connInfo.Port, connInfo.Database)
+
+	return pgx.Connect(context.Background(), connStr)
+}
+
+// setupRoleUser creates a user for the given role and grants the role to that user
+func (suite *PermissionVerificationTestSuite) setupRoleUser(conn *pgx.Conn, roleName string) error {
+	ctx := context.Background()
+	userName := roleName + "_user"
+	userPassword := "test_password_123"
+
+	// Create user if it doesn't exist
+	createUserQuery := fmt.Sprintf(`
+		DO $$ 
+		BEGIN
+			IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '%s') THEN
+				CREATE USER %s WITH PASSWORD '%s';
+			END IF;
+		END $$`, userName, userName, userPassword)
+
+	_, err := conn.Exec(ctx, createUserQuery)
+	if err != nil {
+		return fmt.Errorf("failed to create user %s: %w", userName, err)
+	}
+
+	// Grant the role to the user
+	grantRoleQuery := fmt.Sprintf("GRANT %s TO %s", roleName, userName)
+	_, err = conn.Exec(ctx, grantRoleQuery)
+	if err != nil {
+		return fmt.Errorf("failed to grant role %s to user %s: %w", roleName, userName, err)
+	}
+
+	return nil
+}
+
+// cleanupRoleUser removes the user created for the given role
+func (suite *PermissionVerificationTestSuite) cleanupRoleUser(
+	conn *pgx.Conn,
+	roleName string,
+) error {
+	ctx := context.Background()
+	userName := roleName + "_user"
+
+	// Drop user if exists
+	dropUserQuery := fmt.Sprintf("DROP USER IF EXISTS %s", userName)
+	_, err := conn.Exec(ctx, dropUserQuery)
+	if err != nil {
+		return fmt.Errorf("failed to drop user %s: %w", userName, err)
+	}
+
+	return nil
+}
+
+// cleanupAllRoleUsers removes all role users created during testing
+func (suite *PermissionVerificationTestSuite) cleanupAllRoleUsers(conn *pgx.Conn) {
+	roles := []string{ReadOnlyRoleName, ReadWriteRoleName, AdminRoleName}
+
+	for _, roleName := range roles {
+		err := suite.cleanupRoleUser(conn, roleName)
+		if err != nil {
+			suite.T().Logf("Failed to cleanup role user for %s: %v", roleName, err)
+		}
+	}
 }
 
 // getPermissionMatrix returns the comprehensive permission matrix for testing
@@ -382,7 +475,7 @@ func (suite *PermissionVerificationTestSuite) getPermissionMatrix() []Permission
 	}
 }
 
-// checkRoleHasExpectedPermission checks if a role has the expected permission using system catalogs
+// checkRoleHasExpectedPermission verifies permissions by attempting actual operations with role users
 func (suite *PermissionVerificationTestSuite) checkRoleHasExpectedPermission(
 	conn *pgx.Conn,
 	roleName string,
@@ -391,63 +484,54 @@ func (suite *PermissionVerificationTestSuite) checkRoleHasExpectedPermission(
 ) bool {
 	ctx := context.Background()
 
-	// Query to check role membership and permissions
-	// This is a simplified check - in reality, you'd need more complex queries for each permission type
-	var hasPermission bool
+	// Set up the role user first
+	err := suite.setupRoleUser(conn, roleName)
+	if err != nil {
+		suite.T().Logf("Failed to setup role user for %s: %v", roleName, err)
+		return false
+	}
 
-	switch matrix.ObjectType {
-	case DatabasePermission:
-		query := `
-			SELECT has_database_privilege($1, current_database(), $2)`
-		err := conn.QueryRow(ctx, query, roleName, strings.ToUpper(matrix.Permission)).
-			Scan(&hasPermission)
-		return err == nil && hasPermission == shouldHavePermission
+	// Get connection info for creating role-specific connection
+	version := suite.getCurrentVersion()
+	roleConn, err := suite.getRoleConnection(version, roleName)
+	if err != nil {
+		suite.T().Logf("Failed to connect as user for role %s: %v", roleName, err)
+		return false
+	}
+	defer roleConn.Close(ctx)
 
-	case SchemaPermission:
-		query := `
-			SELECT has_schema_privilege($1, 'public', $2)`
-		err := conn.QueryRow(ctx, query, roleName, strings.ToUpper(matrix.Permission)).
-			Scan(&hasPermission)
-		return err == nil && hasPermission == shouldHavePermission
+	// Perform setup as admin if needed
+	if matrix.SetupQuery != "" {
+		_, setupErr := conn.Exec(ctx, matrix.SetupQuery)
+		if setupErr != nil {
+			suite.T().Logf("Setup query failed for %s: %v", matrix.TestQuery, setupErr)
+		}
+	}
 
-	case TablePermission:
-		// First create the test table for permission checking
-		_, _ = conn.Exec(ctx, "CREATE TABLE IF NOT EXISTS permission_test_table (id INT)")
-		query := `
-			SELECT has_table_privilege($1, 'permission_test_table', $2)`
-		err := conn.QueryRow(ctx, query, roleName, strings.ToUpper(matrix.Permission)).
-			Scan(&hasPermission)
-		_, _ = conn.Exec(ctx, "DROP TABLE IF EXISTS permission_test_table")
-		return err == nil && hasPermission == shouldHavePermission
+	// Attempt the test query as the role user
+	_, testErr := roleConn.Exec(ctx, matrix.TestQuery)
 
-	case SequencePermission:
-		// Create test sequence for permission checking
-		_, _ = conn.Exec(ctx, "CREATE SEQUENCE IF NOT EXISTS permission_test_sequence")
-		query := `
-			SELECT has_sequence_privilege($1, 'permission_test_sequence', $2)`
-		err := conn.QueryRow(ctx, query, roleName, strings.ToUpper(matrix.Permission)).
-			Scan(&hasPermission)
-		_, _ = conn.Exec(ctx, "DROP SEQUENCE IF EXISTS permission_test_sequence")
-		return err == nil && hasPermission == shouldHavePermission
+	// Perform cleanup as admin
+	if matrix.CleanupQuery != "" {
+		_, cleanupErr := conn.Exec(ctx, matrix.CleanupQuery)
+		if cleanupErr != nil {
+			suite.T().Logf("Cleanup query failed for %s: %v", matrix.TestQuery, cleanupErr)
+		}
+	}
 
-	case FunctionPermission:
-		// Create test function for permission checking
-		_, _ = conn.Exec(
-			ctx,
-			"CREATE OR REPLACE FUNCTION permission_test_function() RETURNS INT AS $$ BEGIN RETURN 1; END; $$ LANGUAGE plpgsql",
-		)
-		query := `
-			SELECT has_function_privilege($1, 'permission_test_function()', $2)`
-		err := conn.QueryRow(ctx, query, roleName, strings.ToUpper(matrix.Permission)).
-			Scan(&hasPermission)
-		_, _ = conn.Exec(ctx, "DROP FUNCTION IF EXISTS permission_test_function()")
-		return err == nil && hasPermission == shouldHavePermission
-
-	default:
-		// For other permission types, we'll do a basic existence check for now
-		query := `SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = $1)`
-		err := conn.QueryRow(ctx, query, roleName).Scan(&hasPermission)
-		return err == nil && hasPermission
+	// Evaluate result based on expectation
+	if shouldHavePermission {
+		if testErr != nil {
+			suite.T().Logf("Role %s should have permission but got error: %v", roleName, testErr)
+			return false
+		}
+		return true
+	} else {
+		if testErr == nil {
+			suite.T().Logf("Role %s should NOT have permission but operation succeeded", roleName)
+			return false
+		}
+		return true
 	}
 }
 
@@ -457,6 +541,9 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_ReadOn
 
 	for _, version := range suite.postgresVersions {
 		suite.Run(fmt.Sprintf("PostgreSQL_%s", version), func() {
+			// Set current version for helper methods
+			suite.setCurrentVersion(version)
+
 			// Execute role creation first
 			stdout, stderr, err := suite.runRoleCreation(version)
 
@@ -473,13 +560,21 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_ReadOn
 			require.NoError(suite.T(), err, "Failed to connect to database")
 			defer conn.Close(context.Background())
 
+			// Setup cleanup for role users created during this test
+			defer suite.cleanupAllRoleUsers(conn)
+
 			// Verify role exists before testing permissions
 			var roleExists bool
 			query := "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = $1)"
 			err = conn.QueryRow(context.Background(), query, ReadOnlyRoleName).Scan(&roleExists)
 			require.NoError(suite.T(), err, "Failed to check if role exists")
 
-			require.True(suite.T(), roleExists, "Read-only role '%s' must exist but was not found", ReadOnlyRoleName)
+			require.True(
+				suite.T(),
+				roleExists,
+				"Read-only role '%s' must exist but was not found",
+				ReadOnlyRoleName,
+			)
 
 			// Test each permission in the matrix
 			for _, perm := range matrix {
@@ -503,6 +598,9 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_ReadWr
 
 	for _, version := range suite.postgresVersions {
 		suite.Run(fmt.Sprintf("PostgreSQL_%s", version), func() {
+			// Set current version for helper methods
+			suite.setCurrentVersion(version)
+
 			// Execute role creation first
 			stdout, stderr, err := suite.runRoleCreation(version)
 
@@ -519,13 +617,21 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_ReadWr
 			require.NoError(suite.T(), err, "Failed to connect to database")
 			defer conn.Close(context.Background())
 
+			// Setup cleanup for role users created during this test
+			defer suite.cleanupAllRoleUsers(conn)
+
 			// Verify role exists before testing permissions
 			var roleExists bool
 			query := "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = $1)"
 			err = conn.QueryRow(context.Background(), query, ReadWriteRoleName).Scan(&roleExists)
 			require.NoError(suite.T(), err, "Failed to check if role exists")
 
-			require.True(suite.T(), roleExists, "Read-write role '%s' must exist but was not found", ReadWriteRoleName)
+			require.True(
+				suite.T(),
+				roleExists,
+				"Read-write role '%s' must exist but was not found",
+				ReadWriteRoleName,
+			)
 
 			// Test each permission in the matrix
 			for _, perm := range matrix {
@@ -549,6 +655,9 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_AdminR
 
 	for _, version := range suite.postgresVersions {
 		suite.Run(fmt.Sprintf("PostgreSQL_%s", version), func() {
+			// Set current version for helper methods
+			suite.setCurrentVersion(version)
+
 			// Execute role creation first
 			stdout, stderr, err := suite.runRoleCreation(version)
 
@@ -565,13 +674,21 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_AdminR
 			require.NoError(suite.T(), err, "Failed to connect to database")
 			defer conn.Close(context.Background())
 
+			// Setup cleanup for role users created during this test
+			defer suite.cleanupAllRoleUsers(conn)
+
 			// Verify role exists before testing permissions
 			var roleExists bool
 			query := "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = $1)"
 			err = conn.QueryRow(context.Background(), query, AdminRoleName).Scan(&roleExists)
 			require.NoError(suite.T(), err, "Failed to check if role exists")
 
-			require.True(suite.T(), roleExists, "Admin role '%s' must exist but was not found", AdminRoleName)
+			require.True(
+				suite.T(),
+				roleExists,
+				"Admin role '%s' must exist but was not found",
+				AdminRoleName,
+			)
 
 			// Test each permission in the matrix
 			for _, perm := range matrix {
@@ -595,6 +712,9 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_CrossR
 
 	for _, version := range suite.postgresVersions {
 		suite.Run(fmt.Sprintf("PostgreSQL_%s", version), func() {
+			// Set current version for helper methods
+			suite.setCurrentVersion(version)
+
 			// Execute role creation first
 			stdout, stderr, err := suite.runRoleCreation(version)
 
@@ -611,6 +731,9 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_CrossR
 			require.NoError(suite.T(), err, "Failed to connect to database")
 			defer conn.Close(context.Background())
 
+			// Setup cleanup for role users created during this test
+			defer suite.cleanupAllRoleUsers(conn)
+
 			// Verify all roles exist
 			roles := []string{ReadOnlyRoleName, ReadWriteRoleName, AdminRoleName}
 			for _, roleName := range roles {
@@ -619,7 +742,12 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_CrossR
 				err = conn.QueryRow(context.Background(), query, roleName).Scan(&roleExists)
 				require.NoError(suite.T(), err, "Failed to check if role %s exists", roleName)
 
-				require.True(suite.T(), roleExists, "Role '%s' must exist but was not found", roleName)
+				require.True(
+					suite.T(),
+					roleExists,
+					"Role '%s' must exist but was not found",
+					roleName,
+				)
 			}
 
 			// Test role separation - find permissions where roles should differ
@@ -707,6 +835,9 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_Privil
 
 	for _, version := range suite.postgresVersions {
 		suite.Run(fmt.Sprintf("PostgreSQL_%s", version), func() {
+			// Set current version for helper methods
+			suite.setCurrentVersion(version)
+
 			// Execute role creation first
 			stdout, stderr, err := suite.runRoleCreation(version)
 
@@ -723,6 +854,9 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_Privil
 			require.NoError(suite.T(), err, "Failed to connect to database")
 			defer conn.Close(context.Background())
 
+			// Setup cleanup for role users created during this test
+			defer suite.cleanupAllRoleUsers(conn)
+
 			for _, test := range escalationTests {
 				suite.Run(test.name, func() {
 					// Verify role exists
@@ -737,12 +871,27 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_Privil
 						test.roleName,
 					)
 
-					require.True(suite.T(), roleExists, "Role '%s' must exist but was not found", test.roleName)
+					require.True(
+						suite.T(),
+						roleExists,
+						"Role '%s' must exist but was not found",
+						test.roleName,
+					)
 
-					// For this test, we simulate the permission check using has_*_privilege functions
-					// In a real scenario, you'd connect as the role and try the operation
+					// Setup role user and connect as that user to test the operation
+					err = suite.setupRoleUser(conn, test.roleName)
+					require.NoError(suite.T(), err, "Failed to setup role user for escalation test")
+
+					roleConn, err := suite.getRoleConnection(version, test.roleName)
+					require.NoError(
+						suite.T(),
+						err,
+						"Failed to connect as role user for escalation test",
+					)
+					defer roleConn.Close(context.Background())
+
 					ctx := context.Background()
-					_, testErr := conn.Exec(ctx, test.escalationAttempt)
+					_, testErr := roleConn.Exec(ctx, test.escalationAttempt)
 
 					if test.shouldFail {
 						assert.Error(
@@ -787,6 +936,9 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_Versio
 
 	// Collect permission results from each version
 	for _, version := range suite.postgresVersions {
+		// Set current version for helper methods
+		suite.setCurrentVersion(version)
+
 		// Execute role creation
 		stdout, stderr, err := suite.runRoleCreation(version)
 
