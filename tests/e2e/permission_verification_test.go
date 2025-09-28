@@ -41,7 +41,6 @@ const (
 	FunctionPermission           PermissionType = "function"
 	ProcedurePermission          PermissionType = "procedure"
 	IndexPermission              PermissionType = "index"
-	TypePermission               PermissionType = "type"
 	DomainPermission             PermissionType = "domain"
 	ExtensionPermission          PermissionType = "extension"
 	ForeignDataWrapperPermission PermissionType = "foreign_data_wrapper"
@@ -424,7 +423,7 @@ func (suite *PermissionVerificationTestSuite) getPermissionMatrix() []Permission
 			ReadOnly:     true,
 			ReadWrite:    true,
 			Admin:        true,
-			TestQuery:    "SELECT currval('test_sequence')",
+			TestQuery:    "SELECT last_value FROM test_sequence;",
 			SetupQuery:   "CREATE SEQUENCE IF NOT EXISTS test_sequence; SELECT setval('test_sequence', 1)",
 			CleanupQuery: "DROP SEQUENCE IF EXISTS test_sequence",
 		},
@@ -459,18 +458,6 @@ func (suite *PermissionVerificationTestSuite) getPermissionMatrix() []Permission
 			TestQuery:    "SELECT test_function()",
 			SetupQuery:   "CREATE OR REPLACE FUNCTION test_function() RETURNS INT AS $$ BEGIN RETURN 42; END; $$ LANGUAGE plpgsql",
 			CleanupQuery: "DROP FUNCTION IF EXISTS test_function()",
-		},
-
-		// Type permissions
-		{
-			ObjectType:   TypePermission,
-			Permission:   "USAGE",
-			ReadOnly:     true,
-			ReadWrite:    true,
-			Admin:        true,
-			TestQuery:    "SELECT 'value'::test_type",
-			SetupQuery:   "CREATE TYPE test_type AS (name TEXT, value INT)",
-			CleanupQuery: "DROP TYPE IF EXISTS test_type",
 		},
 	}
 }

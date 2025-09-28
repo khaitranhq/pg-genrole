@@ -9,18 +9,6 @@ SET search_path TO app_schema, public;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Create custom domain and types for testing
-CREATE DOMAIN email_domain AS TEXT
-CHECK (VALUE ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
-
-CREATE TYPE user_status AS ENUM ('active', 'inactive', 'pending', 'suspended');
-CREATE TYPE address_type AS (
-    street VARCHAR(255),
-    city VARCHAR(100),
-    state VARCHAR(50),
-    zipcode VARCHAR(20)
-);
-
 -- Create sequences for testing sequence permissions
 CREATE SEQUENCE user_id_seq START 1000 INCREMENT 1;
 CREATE SEQUENCE order_id_seq START 2000 INCREMENT 1;
