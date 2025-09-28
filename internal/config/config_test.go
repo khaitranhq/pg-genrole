@@ -33,7 +33,7 @@ func TestConfig_Validate(t *testing.T) {
 				Password: "testpass",
 			},
 			expectError: true,
-			errorMsg:    "database host is required",
+			errorMsg:    "Host",
 		},
 		{
 			name: "missing user",
@@ -43,7 +43,7 @@ func TestConfig_Validate(t *testing.T) {
 				Password: "testpass",
 			},
 			expectError: true,
-			errorMsg:    "database user is required",
+			errorMsg:    "User",
 		},
 		{
 			name: "missing password",
@@ -53,7 +53,7 @@ func TestConfig_Validate(t *testing.T) {
 				User: "testuser",
 			},
 			expectError: true,
-			errorMsg:    "database password is required",
+			errorMsg:    "Password",
 		},
 		{
 			name: "invalid port - zero",
@@ -64,7 +64,7 @@ func TestConfig_Validate(t *testing.T) {
 				Password: "testpass",
 			},
 			expectError: true,
-			errorMsg:    "database port must be between 1 and 65535",
+			errorMsg:    "Port",
 		},
 		{
 			name: "invalid port - negative",
@@ -75,7 +75,7 @@ func TestConfig_Validate(t *testing.T) {
 				Password: "testpass",
 			},
 			expectError: true,
-			errorMsg:    "database port must be between 1 and 65535",
+			errorMsg:    "Port",
 		},
 		{
 			name: "invalid port - too high",
@@ -86,7 +86,27 @@ func TestConfig_Validate(t *testing.T) {
 				Password: "testpass",
 			},
 			expectError: true,
-			errorMsg:    "database port must be between 1 and 65535",
+			errorMsg:    "Port",
+		},
+		{
+			name: "valid config with minimum port",
+			config: Config{
+				Host:     "localhost",
+				Port:     1,
+				User:     "testuser",
+				Password: "testpass",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid config with maximum port",
+			config: Config{
+				Host:     "localhost",
+				Port:     65535,
+				User:     "testuser",
+				Password: "testpass",
+			},
+			expectError: false,
 		},
 	}
 

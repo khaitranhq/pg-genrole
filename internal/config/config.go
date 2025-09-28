@@ -4,36 +4,27 @@ package config
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/go-playground/validator/v10"
 )
 
 // Config holds the application configuration
 type Config struct {
 	// Database connection parameters
-	Host     string
-	Port     int
-	User     string
-	Password string
-	Database string
+	Host     string `validate:"required" json:"host"`
+	Port     int    `validate:"min=1,max=65535" json:"port"`
+	User     string `validate:"required" json:"user"`
+	Password string `validate:"required" json:"password"`
+	Database string `json:"database"`
 
 	// Application options
-	DryRun bool
+	DryRun bool `json:"dry_run"`
 }
 
-// Validate validates the configuration parameters
+// Validate validates the configuration parameters using go-playground/validator
 func (c *Config) Validate() error {
-	if c.Host == "" {
-		return fmt.Errorf("host cannot be empty")
-	}
-	if c.User == "" {
-		return fmt.Errorf("database user is required")
-	}
-	if c.Password == "" {
-		return fmt.Errorf("database password is required")
-	}
-	if c.Port <= 0 || c.Port > 65535 {
-		return fmt.Errorf("port out of range: %d (must be 1-65535)", c.Port)
-	}
-	return nil
+	validate := validator.New()
+	return validate.Struct(c)
 }
 
 // DatabaseURL returns a PostgreSQL connection URL
