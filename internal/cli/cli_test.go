@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/khaitranhq/pg-genrole/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/khaitranhq/pg-genrole/internal/config"
 )
 
 func TestParseArgs(t *testing.T) {
@@ -183,7 +183,7 @@ func TestExecute(t *testing.T) {
 		}
 
 		resetCobraState()
-		
+
 		err := Execute()
 		assert.NoError(t, err)
 	})
@@ -195,7 +195,7 @@ func TestExecute(t *testing.T) {
 		}
 
 		resetCobraState()
-		
+
 		err := Execute()
 		assert.Error(t, err)
 	})
@@ -207,17 +207,17 @@ func TestExecute(t *testing.T) {
 // TestVersionCommand tests the version subcommand specifically
 func TestVersionCommand(t *testing.T) {
 	originalArgs := os.Args
-	
+
 	t.Run("version subcommand", func(t *testing.T) {
 		os.Args = []string{"pg-genrole", "version"}
-		
+
 		resetCobraState()
-		
+
 		// This should not error - it should just print version info
 		err := Execute()
 		assert.NoError(t, err)
 	})
-	
+
 	os.Args = originalArgs
 }
 
@@ -228,10 +228,10 @@ func resetCobraState() {
 	globalArgs = nil
 	showHelp = false
 	showVer = false
-	
+
 	// Reset config
 	cfg = config.Config{}
-	
+
 	// Reset Cobra command flags to default values
 	// Note: We need to reset the flag values manually
 	cfg.Host = ""

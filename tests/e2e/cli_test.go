@@ -189,8 +189,8 @@ func (suite *CLITestSuite) Test_CLI_HelpCommand() {
 				"pg-genrole - PostgreSQL Role Generation Tool",
 				"Automates creation of Read-Only, Read-Write, and Admin roles",
 				"ROLE TYPES CREATED:",
-				"<database>_ro",
-				"<database>_rw", 
+				"<database>_readonly",
+				"<database>_readwrite",
 				"<database>_admin",
 				"COMMANDS:",
 				"version",
@@ -198,7 +198,7 @@ func (suite *CLITestSuite) Test_CLI_HelpCommand() {
 				"--database",
 				"--host",
 				"--port",
-				"--user", 
+				"--user",
 				"--password",
 				"--dry-run",
 				"EXAMPLES:",
@@ -211,15 +211,15 @@ func (suite *CLITestSuite) Test_CLI_HelpCommand() {
 				"pg-genrole - PostgreSQL Role Generation Tool",
 				"Automates creation of Read-Only, Read-Write, and Admin roles",
 				"ROLE TYPES CREATED:",
-				"<database>_ro",
-				"<database>_rw",
-				"<database>_admin", 
+				"<database>_readonly",
+				"<database>_readwrite",
+				"<database>_admin",
 				"COMMANDS:",
 				"version",
 				"OPTIONS:",
 				"--database",
 				"--host",
-				"--port", 
+				"--port",
 				"--user",
 				"--password",
 				"--dry-run",
@@ -299,7 +299,7 @@ func (suite *CLITestSuite) Test_CLI_VersionCommand() {
 			args: []string{"-v"},
 		},
 		{
-			name: "Long version flag", 
+			name: "Long version flag",
 			args: []string{"--version"},
 		},
 		{
@@ -318,16 +318,16 @@ func (suite *CLITestSuite) Test_CLI_VersionCommand() {
 			// Version output should contain specific format matching actual output
 			assert.Contains(suite.T(), stdout, "pg-genrole version",
 				"Version output should contain 'pg-genrole version'")
-			
+
 			assert.Contains(suite.T(), stdout, "PostgreSQL Role Generation Tool",
 				"Version output should contain tool description")
-			
+
 			assert.Contains(suite.T(), stdout, "Compatible with PostgreSQL 13+",
 				"Version output should contain PostgreSQL compatibility info")
-			
+
 			assert.Contains(suite.T(), stdout, "Copyright (c) 2024",
 				"Version output should contain copyright information")
-			
+
 			assert.Contains(suite.T(), stdout, "Licensed under MIT License",
 				"Version output should contain license information")
 

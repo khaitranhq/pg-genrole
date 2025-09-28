@@ -56,13 +56,13 @@ func TestGenerateRoleName(t *testing.T) {
 			name:     "readonly role",
 			database: "myapp",
 			roleType: ReadOnly,
-			expected: "myapp_ro",
+			expected: "myapp_readonly",
 		},
 		{
 			name:     "readwrite role",
 			database: "testdb",
 			roleType: ReadWrite,
-			expected: "testdb_rw",
+			expected: "testdb_readwrite",
 		},
 		{
 			name:     "admin role",
@@ -157,29 +157,28 @@ func TestPermissionGranter_generateCreateRoleStatements(t *testing.T) {
 		{
 			name: "readonly role",
 			config: RoleConfig{
-				Name:     "testdb_ro",
+				Name:     "testdb_readonly",
 				Type:     ReadOnly,
 				Database: "testdb",
 			},
 			contains: []string{
-				"CREATE ROLE testdb_ro",
-				"GRANT CONNECT ON DATABASE testdb TO testdb_ro",
-				"GRANT USAGE ON SCHEMA public TO testdb_ro",
-				"GRANT SELECT ON ALL TABLES IN SCHEMA public TO testdb_ro",
+				"CREATE ROLE testdb_readonly",
+				"GRANT CONNECT ON DATABASE testdb TO testdb_readonly",
+				"GRANT USAGE ON SCHEMA public TO testdb_readonly",
+				"GRANT SELECT ON ALL TABLES IN SCHEMA public TO testdb_readonly",
 			},
 		},
 		{
 			name: "readwrite role",
 			config: RoleConfig{
-				Name:     "testdb_rw",
+				Name:     "testdb_readwrite",
 				Type:     ReadWrite,
 				Database: "testdb",
 			},
 			contains: []string{
-				"CREATE ROLE testdb_rw",
-				"GRANT CONNECT ON DATABASE testdb TO testdb_rw",
-				"GRANT TEMPORARY ON DATABASE testdb TO testdb_rw",
-				"GRANT INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public TO testdb_rw",
+				"CREATE ROLE testdb_readwrite",
+				"GRANT CONNECT ON DATABASE testdb TO testdb_readwrite",
+				"GRANT INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public TO testdb_readwrite",
 			},
 		},
 		{
@@ -225,22 +224,22 @@ func TestPermissionGranter_generateSchemaPermissions(t *testing.T) {
 	}{
 		{
 			name:       "readonly schema permissions",
-			roleName:   "testdb_ro",
+			roleName:   "testdb_readonly",
 			roleType:   ReadOnly,
 			schemaName: "app_schema",
 			contains: []string{
-				"GRANT USAGE ON SCHEMA app_schema TO testdb_ro",
-				"GRANT SELECT ON ALL TABLES IN SCHEMA app_schema TO testdb_ro",
+				"GRANT USAGE ON SCHEMA app_schema TO testdb_readonly",
+				"GRANT SELECT ON ALL TABLES IN SCHEMA app_schema TO testdb_readonly",
 			},
 		},
 		{
 			name:       "readwrite schema permissions",
-			roleName:   "testdb_rw",
+			roleName:   "testdb_readwrite",
 			roleType:   ReadWrite,
 			schemaName: "app_schema",
 			contains: []string{
-				"GRANT USAGE ON SCHEMA app_schema TO testdb_rw",
-				"GRANT INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA app_schema TO testdb_rw",
+				"GRANT USAGE ON SCHEMA app_schema TO testdb_readwrite",
+				"GRANT INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA app_schema TO testdb_readwrite",
 			},
 		},
 		{

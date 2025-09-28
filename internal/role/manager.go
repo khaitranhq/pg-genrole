@@ -4,6 +4,7 @@ package role
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/khaitranhq/pg-genrole/internal/database"
 	"github.com/khaitranhq/pg-genrole/internal/permissions"
@@ -162,7 +163,7 @@ func (m *Manager) ListRoles() error {
 	query := `
 		SELECT rolname, rolcreatedb, rolcreaterole, rolcanlogin
 		FROM pg_roles 
-		WHERE rolname ~ '^.+_(ro|rw|admin)$'
+		WHERE rolname ~ '^.+_(readonly|readwrite|admin|ro|rw)$'
 		ORDER BY rolname`
 
 	rows, err := m.conn.Query(query)
@@ -188,15 +189,16 @@ func (m *Manager) ListRoles() error {
 
 		// Extract role type from name
 		roleType := "unknown"
-		if len(roleName) > 3 {
-			suffix := roleName[len(roleName)-3:]
-			if suffix == "_ro" {
-				roleType = "readonly"
-			} else if suffix == "_rw" {
-				roleType = "readwrite"
-			} else if len(roleName) > 6 && roleName[len(roleName)-6:] == "_admin" {
-				roleType = "admin"
-			}
+		if strings.HasSuffix(roleName, "_readonly") {
+			roleType = "readonly"
+		} else if strings.HasSuffix(roleName, "_readwrite") {
+			roleType = "readwrite"
+		} else if strings.HasSuffix(roleName, "_admin") {
+			roleType = "admin"
+		} else if strings.HasSuffix(roleName, "_ro") {
+			roleType = "readonly"
+		} else if strings.HasSuffix(roleName, "_rw") {
+			roleType = "readwrite"
 		}
 
 		fmt.Printf("%-30s %-10s %-12t %-8t\n",

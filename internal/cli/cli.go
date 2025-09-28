@@ -24,9 +24,9 @@ type Args struct {
 }
 
 var (
-	cfg       config.Config
-	showHelp  bool
-	showVer   bool
+	cfg        config.Config
+	showHelp   bool
+	showVer    bool
 	globalArgs *Args
 )
 
@@ -39,8 +39,8 @@ var rootCmd = &cobra.Command{
 Automates creation of Read-Only, Read-Write, and Admin roles for PostgreSQL databases.
 
 ROLE TYPES CREATED:
-    - <database>_ro    : Read-only access (SELECT permissions)
-    - <database>_rw    : Read-write access (SELECT, INSERT, UPDATE, DELETE)
+    - <database>_readonly    : Read-only access (SELECT permissions)
+    - <database>_readwrite    : Read-write access (SELECT, INSERT, UPDATE, DELETE)
     - <database>_admin : Administrative access (all permissions)
 
 PostgreSQL Version Compatibility: >= 13`,
@@ -56,29 +56,29 @@ PostgreSQL Version Compatibility: >= 13`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// Perform custom validation before Cobra's required flag validation
 		// This allows us to provide more specific error messages
-		
+
 		// Check for empty host specifically
 		if cmd.Flag("host").Changed && cfg.Host == "" {
 			return fmt.Errorf("host cannot be empty")
 		}
-		
+
 		// Check for invalid port range specifically
 		if cmd.Flag("port").Changed {
 			if cfg.Port <= 0 || cfg.Port > 65535 {
 				return fmt.Errorf("port out of range: %d (must be 1-65535)", cfg.Port)
 			}
 		}
-		
+
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Set defaults and validate configuration
 		cfg.SetDefaults()
-		
+
 		if err := cfg.Validate(); err != nil {
 			return fmt.Errorf("configuration validation failed: %w", err)
 		}
-		
+
 		// Main application logic would go here
 		// For now, just set the parsed config
 		globalArgs = &Args{
@@ -137,7 +137,7 @@ func ParseArgs() (*Args, error) {
 	globalArgs = nil
 	showHelp = false
 	showVer = false
-	
+
 	// Check for help/version flags manually before executing
 	args := os.Args[1:]
 	for _, arg := range args {
@@ -160,7 +160,7 @@ func ParseArgs() (*Args, error) {
 	if globalArgs == nil {
 		return &Args{}, nil
 	}
-	
+
 	return globalArgs, nil
 }
 

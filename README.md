@@ -97,7 +97,6 @@ This matrix shows the permissions granted to different user types (RO, RW, Admin
 | PostgreSQL Object         | Permission Type                | Read-Only (RO) | Read-Write (RW) | Admin |
 | ------------------------- | ------------------------------ | -------------- | --------------- | ----- |
 | **Database**              | CONNECT                        | ✅             | ✅              | ✅    |
-|                           | TEMPORARY (create temp tables) | ❌             | ✅              | ✅    |
 |                           | CREATE                         | ❌             | ❌              | ✅    |
 | **Schema**                | USAGE                          | ✅             | ✅              | ✅    |
 |                           | CREATE                         | ❌             | ❌              | ✅    |

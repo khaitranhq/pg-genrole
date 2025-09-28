@@ -12,8 +12,8 @@ import (
 type RoleType string
 
 const (
-	ReadOnly  RoleType = "ro"
-	ReadWrite RoleType = "rw"
+	ReadOnly  RoleType = "readonly"
+	ReadWrite RoleType = "readwrite"
 	Admin     RoleType = "admin"
 )
 
@@ -155,12 +155,6 @@ func (pg *PermissionGranter) generateReadWritePermissions(config RoleConfig) []s
 
 	// Include all read-only permissions
 	statements = append(statements, pg.generateReadOnlyPermissions(config)...)
-
-	// Grant temporary table creation
-	statements = append(
-		statements,
-		fmt.Sprintf("GRANT TEMPORARY ON DATABASE %s TO %s", config.Database, config.Name),
-	)
 
 	// Grant insert, update, delete on all tables
 	statements = append(
@@ -472,7 +466,7 @@ func (pg *PermissionGranter) ValidateRolePermissions(roleName string, expectedTy
 func ParseRoleType(s string) (RoleType, error) {
 	roleType := RoleType(strings.ToLower(s))
 	if !roleType.IsValid() {
-		return "", fmt.Errorf("invalid role type: %s (must be one of: ro, rw, admin)", s)
+		return "", fmt.Errorf("invalid role type: %s (must be one of: readonly, readwrite, admin)", s)
 	}
 	return roleType, nil
 }

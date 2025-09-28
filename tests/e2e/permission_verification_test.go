@@ -65,8 +65,8 @@ type PermissionMatrix struct {
 
 // Role names used by pg-genrole
 const (
-	ReadOnlyRoleName  = "testdb_ro"
-	ReadWriteRoleName = "testdb_rw"
+	ReadOnlyRoleName  = "testdb_readonly"
+	ReadWriteRoleName = "testdb_readwrite"
 	AdminRoleName     = "testdb_admin"
 )
 
@@ -206,16 +206,6 @@ func (suite *PermissionVerificationTestSuite) getPermissionMatrix() []Permission
 			TestQuery:    "SELECT current_database()",
 			SetupQuery:   "",
 			CleanupQuery: "",
-		},
-		{
-			ObjectType:   DatabasePermission,
-			Permission:   "TEMPORARY",
-			ReadOnly:     false,
-			ReadWrite:    true,
-			Admin:        true,
-			TestQuery:    "CREATE TEMP TABLE temp_test (id INT)",
-			SetupQuery:   "",
-			CleanupQuery: "DROP TABLE IF EXISTS temp_test",
 		},
 		{
 			ObjectType:   DatabasePermission,
