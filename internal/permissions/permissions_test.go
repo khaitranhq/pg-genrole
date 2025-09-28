@@ -1,6 +1,7 @@
 package permissions
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -203,14 +204,7 @@ func TestPermissionGranter_generateCreateRoleStatements(t *testing.T) {
 
 			// Check that all required statements are present
 			for _, expectedStmt := range tt.contains {
-				found := false
-				for _, stmt := range statements {
-					if stmt == expectedStmt {
-						found = true
-						break
-					}
-				}
-				assert.True(t, found, "Expected statement not found: %s", expectedStmt)
+				assert.True(t, slices.Contains(statements, expectedStmt), "Expected statement not found: %s", expectedStmt)
 			}
 		})
 	}
@@ -267,14 +261,7 @@ func TestPermissionGranter_generateSchemaPermissions(t *testing.T) {
 
 			// Check that all required statements are present
 			for _, expectedStmt := range tt.contains {
-				found := false
-				for _, stmt := range statements {
-					if stmt == expectedStmt {
-						found = true
-						break
-					}
-				}
-				assert.True(t, found, "Expected statement not found: %s", expectedStmt)
+				assert.True(t, slices.Contains(statements, expectedStmt), "Expected statement not found: %s", expectedStmt)
 			}
 		})
 	}
