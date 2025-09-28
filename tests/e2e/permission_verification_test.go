@@ -65,9 +65,9 @@ type PermissionMatrix struct {
 
 // Role names used by pg-genrole
 const (
-	ReadOnlyRoleName  = "genrole_readonly"
-	ReadWriteRoleName = "genrole_readwrite"
-	AdminRoleName     = "genrole_admin"
+	ReadOnlyRoleName  = "testdb_ro"
+	ReadWriteRoleName = "testdb_rw"
+	AdminRoleName     = "testdb_admin"
 )
 
 // SetupSuite initializes the test environment with PostgreSQL containers
