@@ -65,9 +65,9 @@ type PermissionMatrix struct {
 
 // Role names used by pg-genrole
 const (
-	ReadOnlyRoleName  = "pg_genrole_readonly"
-	ReadWriteRoleName = "pg_genrole_readwrite"
-	AdminRoleName     = "pg_genrole_admin"
+	ReadOnlyRoleName  = "genrole_readonly"
+	ReadWriteRoleName = "genrole_readwrite"
+	AdminRoleName     = "genrole_admin"
 )
 
 // SetupSuite initializes the test environment with PostgreSQL containers
@@ -489,10 +489,7 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_ReadOn
 			err = conn.QueryRow(context.Background(), query, ReadOnlyRoleName).Scan(&roleExists)
 			require.NoError(suite.T(), err, "Failed to check if role exists")
 
-			if !roleExists {
-				suite.T().Skip("Read-only role not found, skipping permission tests")
-				return
-			}
+			require.True(suite.T(), roleExists, "Read-only role '%s' must exist but was not found", ReadOnlyRoleName)
 
 			// Test each permission in the matrix
 			for _, perm := range matrix {
@@ -538,10 +535,7 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_ReadWr
 			err = conn.QueryRow(context.Background(), query, ReadWriteRoleName).Scan(&roleExists)
 			require.NoError(suite.T(), err, "Failed to check if role exists")
 
-			if !roleExists {
-				suite.T().Skip("Read-write role not found, skipping permission tests")
-				return
-			}
+			require.True(suite.T(), roleExists, "Read-write role '%s' must exist but was not found", ReadWriteRoleName)
 
 			// Test each permission in the matrix
 			for _, perm := range matrix {
@@ -587,10 +581,7 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_AdminR
 			err = conn.QueryRow(context.Background(), query, AdminRoleName).Scan(&roleExists)
 			require.NoError(suite.T(), err, "Failed to check if role exists")
 
-			if !roleExists {
-				suite.T().Skip("Admin role not found, skipping permission tests")
-				return
-			}
+			require.True(suite.T(), roleExists, "Admin role '%s' must exist but was not found", AdminRoleName)
 
 			// Test each permission in the matrix
 			for _, perm := range matrix {
@@ -638,10 +629,7 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_CrossR
 				err = conn.QueryRow(context.Background(), query, roleName).Scan(&roleExists)
 				require.NoError(suite.T(), err, "Failed to check if role %s exists", roleName)
 
-				if !roleExists {
-					suite.T().Skipf("Role %s not found, skipping cross-role comparison", roleName)
-					return
-				}
+				require.True(suite.T(), roleExists, "Role '%s' must exist but was not found", roleName)
 			}
 
 			// Test role separation - find permissions where roles should differ
@@ -759,11 +747,7 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_Privil
 						test.roleName,
 					)
 
-					if !roleExists {
-						suite.T().
-							Skipf("Role %s not found, skipping escalation test", test.roleName)
-						return
-					}
+					require.True(suite.T(), roleExists, "Role '%s' must exist but was not found", test.roleName)
 
 					// For this test, we simulate the permission check using has_*_privilege functions
 					// In a real scenario, you'd connect as the role and try the operation
