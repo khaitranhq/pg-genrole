@@ -179,14 +179,6 @@ func ShowVersion() {
 	fmt.Println("Licensed under MIT License")
 }
 
-// ConfirmAction asks for user confirmation (if needed in the future)
-func ConfirmAction(message string) bool {
-	fmt.Printf("%s [y/N]: ", message)
-	var response string
-	fmt.Scanln(&response)
-	return response == "y" || response == "Y" || response == "yes" || response == "Yes"
-}
-
 // getCustomHelpTemplate returns a custom help template that matches the original format
 func getCustomHelpTemplate() string {
 	return `{{.Long}}

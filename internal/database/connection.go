@@ -135,3 +135,14 @@ func (c *Connection) GetSchemas() ([]string, error) {
 
 	return schemas, nil
 }
+
+// GetPostgreSQLMajorVersion returns the major version number of PostgreSQL (e.g., 13, 14, 15, 16)
+func (c *Connection) GetPostgreSQLMajorVersion() (int, error) {
+	var majorVersion int
+	err := c.QueryRow("SHOW server_version_num").Scan(&majorVersion)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get PostgreSQL version number: %w", err)
+	}
+	// Convert version number to major version (e.g., 130000 -> 13, 140000 -> 14)
+	return majorVersion / 10000, nil
+}

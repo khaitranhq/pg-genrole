@@ -130,34 +130,6 @@ func (m *Manager) processRemoteDatabase(databaseName string, dryRun bool) error 
 	return m.CreateDatabaseRoles(databaseName, dryRun)
 }
 
-// DropRole drops a database role
-func (m *Manager) DropRole(roleName string, dryRun bool) error {
-	exists, err := m.conn.CheckRoleExists(roleName)
-	if err != nil {
-		return fmt.Errorf("failed to check if role exists: %w", err)
-	}
-
-	if !exists {
-		fmt.Printf("Role %s does not exist, nothing to drop\n", roleName)
-		return nil
-	}
-
-	dropStmt := fmt.Sprintf("DROP ROLE %s", roleName)
-
-	if dryRun {
-		fmt.Printf("DRY RUN: %s\n", dropStmt)
-		return nil
-	}
-
-	_, err = m.conn.Exec(dropStmt)
-	if err != nil {
-		return fmt.Errorf("failed to drop role %s: %w", roleName, err)
-	}
-
-	fmt.Printf("Successfully dropped role: %s\n", roleName)
-	return nil
-}
-
 // ListRoles lists all roles matching the pg-genrole naming pattern
 func (m *Manager) ListRoles() error {
 	query := `
@@ -215,62 +187,4 @@ func (m *Manager) ListRoles() error {
 	return nil
 }
 
-// ValidateRoles validates that roles have the correct permissions
-func (m *Manager) ValidateRoles(databaseName string) error {
-	roleTypes := []permissions.RoleType{
-		permissions.ReadOnly,
-		permissions.ReadWrite,
-		permissions.Admin,
-	}
-
-	fmt.Printf("Validating roles for database: %s\n", databaseName)
-
-	for _, roleType := range roleTypes {
-		roleName := permissions.GenerateRoleName(databaseName, roleType)
-
-		if err := m.granter.ValidateRolePermissions(roleName, roleType); err != nil {
-			return fmt.Errorf("validation failed for role %s: %w", roleName, err)
-		}
-
-		fmt.Printf("✓ Role %s validation passed\n", roleName)
-	}
-
-	return nil
-}
-
-// GetRoleInfo returns information about a specific role
-func (m *Manager) GetRoleInfo(roleName string) (*RoleInfo, error) {
-	query := `
-		SELECT rolname, rolcanlogin, rolcreatedb, rolcreaterole, rolsuper
-		FROM pg_roles 
-		WHERE rolname = $1`
-
-	var info RoleInfo
-	err := m.conn.QueryRow(query, roleName).Scan(
-		&info.Name,
-		&info.CanLogin,
-		&info.CanCreateDB,
-		&info.CanCreateRole,
-		&info.IsSuperuser,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get role info for %s: %w", roleName, err)
-	}
-
-	return &info, nil
-}
-
-// RoleInfo contains information about a database role
-type RoleInfo struct {
-	Name          string
-	CanLogin      bool
-	CanCreateDB   bool
-	CanCreateRole bool
-	IsSuperuser   bool
-}
-
 // String returns a string representation of the role info
-func (r *RoleInfo) String() string {
-	return fmt.Sprintf("Role: %s, Login: %t, CreateDB: %t, CreateRole: %t, Superuser: %t",
-		r.Name, r.CanLogin, r.CanCreateDB, r.CanCreateRole, r.IsSuperuser)
-}
