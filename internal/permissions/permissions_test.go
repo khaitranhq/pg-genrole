@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRoleType_String(t *testing.T) {
@@ -13,8 +12,8 @@ func TestRoleType_String(t *testing.T) {
 		roleType RoleType
 		expected string
 	}{
-		{ReadOnly, "ro"},
-		{ReadWrite, "rw"},
+		{ReadOnly, "readonly"},
+		{ReadWrite, "readwrite"},
 		{Admin, "admin"},
 	}
 
@@ -35,7 +34,7 @@ func TestRoleType_IsValid(t *testing.T) {
 		{Admin, true},
 		{RoleType("invalid"), false},
 		{RoleType(""), false},
-		{RoleType("readonly"), false},
+		{RoleType("ro"), false},
 	}
 
 	for _, tt := range tests {
@@ -76,69 +75,6 @@ func TestGenerateRoleName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := GenerateRoleName(tt.database, tt.roleType)
 			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestParseRoleType(t *testing.T) {
-	tests := []struct {
-		name        string
-		input       string
-		expected    RoleType
-		expectError bool
-	}{
-		{
-			name:     "valid ro",
-			input:    "ro",
-			expected: ReadOnly,
-		},
-		{
-			name:     "valid RO uppercase",
-			input:    "RO",
-			expected: ReadOnly,
-		},
-		{
-			name:     "valid rw",
-			input:    "rw",
-			expected: ReadWrite,
-		},
-		{
-			name:     "valid RW uppercase",
-			input:    "RW",
-			expected: ReadWrite,
-		},
-		{
-			name:     "valid admin",
-			input:    "admin",
-			expected: Admin,
-		},
-		{
-			name:     "valid ADMIN uppercase",
-			input:    "ADMIN",
-			expected: Admin,
-		},
-		{
-			name:        "invalid role type",
-			input:       "invalid",
-			expectError: true,
-		},
-		{
-			name:        "empty string",
-			input:       "",
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := ParseRoleType(tt.input)
-			if tt.expectError {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid role type")
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.expected, result)
-			}
 		})
 	}
 }
@@ -203,7 +139,12 @@ func TestPermissionGranter_generateCreateRoleStatements(t *testing.T) {
 
 			// Check that all required statements are present
 			for _, expectedStmt := range tt.contains {
-				assert.True(t, slices.Contains(statements, expectedStmt), "Expected statement not found: %s", expectedStmt)
+				assert.True(
+					t,
+					slices.Contains(statements, expectedStmt),
+					"Expected statement not found: %s",
+					expectedStmt,
+				)
 			}
 		})
 	}
@@ -260,7 +201,12 @@ func TestPermissionGranter_generateSchemaPermissions(t *testing.T) {
 
 			// Check that all required statements are present
 			for _, expectedStmt := range tt.contains {
-				assert.True(t, slices.Contains(statements, expectedStmt), "Expected statement not found: %s", expectedStmt)
+				assert.True(
+					t,
+					slices.Contains(statements, expectedStmt),
+					"Expected statement not found: %s",
+					expectedStmt,
+				)
 			}
 		})
 	}
