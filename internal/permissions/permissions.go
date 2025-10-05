@@ -75,6 +75,10 @@ func (pg *PermissionGranter) CreateRole(config RoleConfig, dryRun bool) error {
 func (pg *PermissionGranter) generateCreateRoleStatements(config RoleConfig) []string {
 	var statements []string
 
+	// Apply security hardening: revoke CREATE privilege from PUBLIC role on public schema
+	// This prevents regular users from creating objects in the public schema
+	statements = append(statements, "REVOKE CREATE ON SCHEMA public FROM PUBLIC")
+
 	// Create the role
 	createRoleStmt := fmt.Sprintf("CREATE ROLE %s", config.Name)
 	statements = append(statements, createRoleStmt)

@@ -64,7 +64,7 @@ func main() {
 	} else {
 		// Process all databases
 		fmt.Println("Processing all accessible databases")
-		err = roleManager.CreateAllDatabaseRoles("postgres", args.Config.DryRun)
+		err = roleManager.CreateAllDatabaseRoles(args.Config.DryRun)
 	}
 
 	if err != nil {

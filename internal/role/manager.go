@@ -3,7 +3,6 @@ package role
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/khaitranhq/pg-genrole/internal/database"
@@ -84,15 +83,10 @@ func (m *Manager) CreateDatabaseRoles(databaseName string, dryRun bool) error {
 }
 
 // CreateAllDatabaseRoles creates roles for all accessible databases
-func (m *Manager) CreateAllDatabaseRoles(currentDatabase string, dryRun bool) error {
+func (m *Manager) CreateAllDatabaseRoles(dryRun bool) error {
 	databases, err := m.conn.GetDatabases()
 	if err != nil {
 		return fmt.Errorf("failed to get database list: %w", err)
-	}
-
-	if slices.Contains(databases, currentDatabase) && currentDatabase != "" &&
-		currentDatabase != "postgres" {
-		databases = append(databases, currentDatabase)
 	}
 
 	if len(databases) == 0 {
@@ -103,31 +97,12 @@ func (m *Manager) CreateAllDatabaseRoles(currentDatabase string, dryRun bool) er
 
 	for _, dbName := range databases {
 		fmt.Printf("\n--- Processing database: %s ---\n", dbName)
-
-		// For databases other than the current one, we need a new connection
-		if dbName != currentDatabase {
-			if err := m.processRemoteDatabase(dbName, dryRun); err != nil {
-				fmt.Printf("Warning: failed to process database %s: %v\n", dbName, err)
-				continue
-			}
-		} else {
-			if err := m.CreateDatabaseRoles(dbName, dryRun); err != nil {
-				return fmt.Errorf("failed to create roles for database %s: %w", dbName, err)
-			}
+		if err := m.CreateDatabaseRoles(dbName, dryRun); err != nil {
+			return fmt.Errorf("failed to create roles for database %s: %w", dbName, err)
 		}
 	}
 
 	return nil
-}
-
-// processRemoteDatabase creates a connection to a specific database and creates roles
-func (m *Manager) processRemoteDatabase(databaseName string, dryRun bool) error {
-	// Note: In practice, you might want to create a new connection to the specific database
-	// For now, we'll create roles from the current connection, which should work for most cases
-	// but might not handle database-specific schemas properly
-
-	fmt.Printf("Processing database %s from current connection\n", databaseName)
-	return m.CreateDatabaseRoles(databaseName, dryRun)
 }
 
 // ListRoles lists all roles matching the pg-genrole naming pattern
