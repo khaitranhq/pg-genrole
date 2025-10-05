@@ -815,8 +815,8 @@ func (suite *PermissionVerificationTestSuite) Test_PermissionVerification_Privil
 			name:              "Admin_Role_Creation",
 			roleName:          AdminRoleName,
 			escalationAttempt: "CREATE ROLE test_admin_role",
-			shouldFail:        false,
-			description:       "Admin role should be able to create roles",
+			shouldFail:        true,
+			description:       "Admin role should not be able to create roles",
 		},
 	}
 
