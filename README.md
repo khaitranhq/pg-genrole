@@ -94,75 +94,58 @@ This matrix shows the permissions granted to different user types (RO, RW, Admin
 
 ### Database Objects Permission Matrix
 
-| PostgreSQL Object         | Permission Type                | Read-Only (RO) | Read-Write (RW) | Admin |
-| ------------------------- | ------------------------------ | -------------- | --------------- | ----- |
-| **Database**              | CONNECT                        | ✅             | ✅              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-| **Schema**                | USAGE                          | ✅             | ✅              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-| **Tables**                | SELECT                         | ✅             | ✅              | ✅    |
-|                           | INSERT                         | ❌             | ✅              | ✅    |
-|                           | UPDATE                         | ❌             | ✅              | ✅    |
-|                           | DELETE                         | ❌             | ✅              | ✅    |
-|                           | TRUNCATE                       | ❌             | ✅              | ✅    |
-|                           | REFERENCES                     | ❌             | ❌              | ✅    |
-|                           | TRIGGER                        | ❌             | ❌              | ✅    |
-|                           | CREATE (ownership)             | ❌             | ❌              | ✅    |
-|                           | ALTER                          | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-| **Views**                 | SELECT                         | ✅             | ✅              | ✅    |
-|                           | TRIGGER                        | ❌             | ❌              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | ALTER                          | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-| **Materialized Views**    | SELECT                         | ✅             | ✅              | ✅    |
-|                           | REFRESH                        | ❌             | ❌              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | ALTER                          | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-| **Sequences**             | SELECT (currval)               | ✅             | ✅              | ✅    |
-|                           | USAGE (nextval, setval)        | ❌             | ✅              | ✅    |
-|                           | UPDATE (modify sequence)       | ❌             | ❌              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | ALTER                          | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-| **Functions/Procedures**  | EXECUTE                        | ✅             | ✅              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | ALTER                          | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-| **Indexes**               | Usage (automatic)              | ✅             | ✅              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-|                           | REINDEX                        | ❌             | ❌              | ✅    |
-| **Types/Domains**         | USAGE                          | ✅             | ✅              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | ALTER                          | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-| **Foreign Data Wrappers** | USAGE                          | ❌             | ✅              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | ALTER                          | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-| **Foreign Servers**       | USAGE                          | ❌             | ✅              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | ALTER                          | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-| **Foreign Tables**        | SELECT                         | ✅             | ✅              | ✅    |
-|                           | INSERT                         | ❌             | ✅              | ✅    |
-|                           | UPDATE                         | ❌             | ✅              | ✅    |
-|                           | DELETE                         | ❌             | ✅              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | ALTER                          | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-| **Large Objects**         | SELECT (read)                  | ✅             | ✅              | ✅    |
-|                           | UPDATE (write)                 | ❌             | ✅              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | DELETE                         | ❌             | ❌              | ✅    |
-| **Tablespaces**           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | ALTER                          | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
-| **Extensions**            | USAGE                          | ✅             | ✅              | ✅    |
-|                           | CREATE                         | ❌             | ❌              | ✅    |
-|                           | DROP                           | ❌             | ❌              | ✅    |
+| PostgreSQL Object        | Permission Type          | Read-Only (RO) | Read-Write (RW) | Admin |
+| ------------------------ | ------------------------ | -------------- | --------------- | ----- |
+| **Database**             | CONNECT                  | ✅             | ✅              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+| **Schema**               | USAGE                    | ✅             | ✅              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+| **Tables**               | SELECT                   | ✅             | ✅              | ✅    |
+|                          | INSERT                   | ❌             | ✅              | ✅    |
+|                          | UPDATE                   | ❌             | ✅              | ✅    |
+|                          | DELETE                   | ❌             | ✅              | ✅    |
+|                          | TRUNCATE                 | ❌             | ✅              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+|                          | ALTER                    | ❌             | ❌              | ✅    |
+|                          | DROP                     | ❌             | ❌              | ✅    |
+| Triggers                 | CREATE                   | ❌             | ❌              | ✅    |
+| **Views**                | SELECT                   | ✅             | ✅              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+|                          | ALTER                    | ❌             | ❌              | ✅    |
+|                          | DROP                     | ❌             | ❌              | ✅    |
+| **Materialized Views**   | SELECT                   | ✅             | ✅              | ✅    |
+|                          | REFRESH                  | ❌             | ❌              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+|                          | ALTER                    | ❌             | ❌              | ✅    |
+|                          | DROP                     | ❌             | ❌              | ✅    |
+| **Sequences**            | SELECT (currval)         | ✅             | ✅              | ✅    |
+|                          | USAGE (nextval, setval)  | ❌             | ✅              | ✅    |
+|                          | UPDATE (modify sequence) | ❌             | ❌              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+|                          | ALTER                    | ❌             | ❌              | ✅    |
+|                          | DROP                     | ❌             | ❌              | ✅    |
+| **Functions/Procedures** | EXECUTE                  | ✅             | ✅              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+|                          | ALTER                    | ❌             | ❌              | ✅    |
+|                          | DROP                     | ❌             | ❌              | ✅    |
+| **Indexes**              | Usage (automatic)        | ✅             | ✅              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+|                          | DROP                     | ❌             | ❌              | ✅    |
+|                          | REINDEX                  | ❌             | ❌              | ✅    |
+| **Foreign Servers**      | USAGE                    | ❌             | ✅              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+|                          | ALTER                    | ❌             | ❌              | ✅    |
+|                          | DROP                     | ❌             | ❌              | ✅    |
+| **Foreign Tables**       | SELECT                   | ✅             | ✅              | ✅    |
+|                          | INSERT                   | ❌             | ✅              | ✅    |
+|                          | UPDATE                   | ❌             | ✅              | ✅    |
+|                          | DELETE                   | ❌             | ✅              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+|                          | ALTER                    | ❌             | ❌              | ✅    |
+|                          | DROP                     | ❌             | ❌              | ✅    |
+| **Extensions**           | USAGE                    | ✅             | ✅              | ✅    |
+|                          | CREATE                   | ❌             | ❌              | ✅    |
+|                          | DROP                     | ❌             | ❌              | ✅    |
 
 ### System-Level Permissions
 
@@ -177,28 +160,9 @@ This matrix shows the permissions granted to different user types (RO, RW, Admin
 | CREATE DATABASE         | ❌             | ❌              | ✅    |
 | ALTER DATABASE          | ❌             | ❌              | ✅    |
 | DROP DATABASE           | ❌             | ❌              | ✅    |
-| **Configuration**       |                |                 |       |
-| ALTER SYSTEM            | ❌             | ❌              | ✅    |
-| SET (session)           | ✅             | ✅              | ✅    |
-| **Monitoring**          |                |                 |       |
-| View system catalogs    | ✅             | ✅              | ✅    |
-| View statistics         | ✅             | ✅              | ✅    |
-| **Maintenance**         |                |                 |       |
-| VACUUM                  | ❌             | ❌              | ✅    |
-| ANALYZE                 | ❌             | ❌              | ✅    |
-| REINDEX                 | ❌             | ❌              | ✅    |
 | **Backup/Restore**      |                |                 |       |
 | pg_dump (logical)       | ✅             | ✅              | ✅    |
 | pg_restore              | ❌             | ❌              | ✅    |
-| Base backup             | ❌             | ❌              | ✅    |
-
-### Connection Management
-
-| Permission             | Read-Only (RO) | Read-Write (RW) | Admin     |
-| ---------------------- | -------------- | --------------- | --------- |
-| Connection limit       | Default        | Default         | Unlimited |
-| pg_cancel_backend()    | ❌             | ❌              | ✅        |
-| pg_terminate_backend() | ❌             | ❌              | ✅        |
 
 ### Legend
 
