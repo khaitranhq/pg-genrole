@@ -65,8 +65,8 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'UPDATE' THEN
         INSERT INTO audit.user_changes (user_id, action, old_data, new_data)
-        VALUES (OLD.id, 'UPDATE', 
-            to_jsonb(OLD), 
+        VALUES (OLD.id, 'UPDATE',
+            to_jsonb(OLD),
             to_jsonb(NEW));
     ELSIF TG_OP = 'DELETE' THEN
         INSERT INTO audit.user_changes (user_id, action, old_data)
@@ -91,7 +91,7 @@ GROUP BY u.id, u.username, u.email;
 
 -- Create materialized view for post statistics
 CREATE MATERIALIZED VIEW app.post_stats AS
-SELECT 
+SELECT
     date_trunc('day', created_at) as post_date,
     status,
     COUNT(*) as post_count,
@@ -113,12 +113,12 @@ $$ LANGUAGE plpgsql;
 
 -- Insert test data
 INSERT INTO app.users (email, username)
-VALUES 
+VALUES
     ('test1@example.com', 'test_user1'),
     ('test2@example.com', 'test_user2');
 
 INSERT INTO app.posts (user_id, title, content, status)
-SELECT 
+SELECT
     u.id,
     'Test Post ' || seq,
     'This is test content for post ' || seq,

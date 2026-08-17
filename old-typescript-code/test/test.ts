@@ -69,7 +69,7 @@ describe('DatabaseManager Integration Tests', () => {
               START 1000
               MINVALUE 1000
               MAXVALUE 9999999999;
-    
+
             CREATE SEQUENCE app.post_id_seq
               INCREMENT 1
               START 1
@@ -87,7 +87,7 @@ describe('DatabaseManager Integration Tests', () => {
               created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
               updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
-    
+
             CREATE TABLE app.posts (
               id INTEGER PRIMARY KEY DEFAULT nextval('app.post_id_seq'),
               user_id INTEGER REFERENCES app.users(id),
@@ -97,7 +97,7 @@ describe('DatabaseManager Integration Tests', () => {
               created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
               updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
-    
+
             CREATE TABLE app.comments (
               id SERIAL PRIMARY KEY,
               post_id INTEGER REFERENCES app.posts(id),
@@ -105,7 +105,7 @@ describe('DatabaseManager Integration Tests', () => {
               content TEXT NOT NULL,
               created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
-    
+
             CREATE TABLE audit.changes (
               id SERIAL PRIMARY KEY,
               table_name VARCHAR(50),
@@ -126,7 +126,7 @@ describe('DatabaseManager Integration Tests', () => {
               RETURN NEW;
             END;
             $$ language 'plpgsql';
-    
+
             CREATE OR REPLACE FUNCTION audit.log_changes()
             RETURNS TRIGGER AS $$
             BEGIN
@@ -140,7 +140,7 @@ describe('DatabaseManager Integration Tests', () => {
               RETURN NULL;
             END;
             $$ LANGUAGE plpgsql;
-    
+
             CREATE OR REPLACE FUNCTION app.get_user_stats(p_user_id INTEGER)
             RETURNS TABLE (
               post_count INTEGER,
@@ -149,7 +149,7 @@ describe('DatabaseManager Integration Tests', () => {
             ) AS $$
             BEGIN
               RETURN QUERY
-              SELECT 
+              SELECT
                 COUNT(DISTINCT p.id)::INTEGER as post_count,
                 COUNT(DISTINCT c.id)::INTEGER as comment_count,
                 MAX(GREATEST(COALESCE(p.created_at, '1970-01-01'), COALESCE(c.created_at, '1970-01-01'))) as last_activity
@@ -167,17 +167,17 @@ describe('DatabaseManager Integration Tests', () => {
               BEFORE UPDATE ON app.users
               FOR EACH ROW
               EXECUTE FUNCTION update_updated_at_column();
-    
+
             CREATE TRIGGER update_posts_modtime
               BEFORE UPDATE ON app.posts
               FOR EACH ROW
               EXECUTE FUNCTION update_updated_at_column();
-    
+
             CREATE TRIGGER audit_users_changes
               AFTER UPDATE OR DELETE ON app.users
               FOR EACH ROW
               EXECUTE FUNCTION audit.log_changes();
-    
+
             CREATE TRIGGER audit_posts_changes
               AFTER UPDATE OR DELETE ON app.posts
               FOR EACH ROW
@@ -187,7 +187,7 @@ describe('DatabaseManager Integration Tests', () => {
       // Create views
       await dbClient.query(`
             CREATE VIEW app.active_users AS
-            SELECT 
+            SELECT
               u.id,
               u.username,
               u.email,
@@ -198,9 +198,9 @@ describe('DatabaseManager Integration Tests', () => {
             LEFT JOIN app.posts p ON p.user_id = u.id
             LEFT JOIN app.comments c ON c.user_id = u.id
             GROUP BY u.id, u.username, u.email;
-    
+
             CREATE MATERIALIZED VIEW app.post_stats AS
-            SELECT 
+            SELECT
               date_trunc('day', created_at) as post_date,
               status,
               COUNT(*) as post_count,
@@ -220,22 +220,22 @@ describe('DatabaseManager Integration Tests', () => {
 
       // Insert sample data
       await dbClient.query(`
-            INSERT INTO app.users (email, username, role) VALUES 
+            INSERT INTO app.users (email, username, role) VALUES
               ('user1@${dbName}.com', 'user1_${dbName}', 'admin'),
               ('user2@${dbName}.com', 'user2_${dbName}', 'user'),
               ('user3@${dbName}.com', 'user3_${dbName}', 'user');
-    
+
             INSERT INTO app.posts (user_id, title, content, status)
-            SELECT 
+            SELECT
               u.id,
               'Post ' || generate_series || ' by ' || u.username,
               'Content for post ' || generate_series || ' in database ' || '${dbName}',
               CASE WHEN generate_series % 2 = 0 THEN 'published' ELSE 'draft' END
             FROM app.users u
             CROSS JOIN generate_series(1, 3);
-    
+
             INSERT INTO app.comments (post_id, user_id, content)
-            SELECT 
+            SELECT
               p.id,
               u.id,
               'Comment on post ' || p.id || ' by ' || u.username
@@ -304,7 +304,7 @@ describe('DatabaseManager Integration Tests', () => {
           console.log('1. Testing Sequences...');
           // 1. Test Sequences
           const sequencesResult = await readClient.query(`
-            SELECT 
+            SELECT
               sequence_schema,
               sequence_name,
               start_value,
@@ -344,7 +344,7 @@ describe('DatabaseManager Integration Tests', () => {
           // Should NOT be able to modify tables
           await expect(
             readClient.query(`
-              INSERT INTO app.users (email, username, role) 
+              INSERT INTO app.users (email, username, role)
               VALUES ('test@test.com', 'test', 'user')
             `)
           ).rejects.toThrow();
@@ -461,7 +461,7 @@ describe('DatabaseManager Integration Tests', () => {
           console.log('1. Testing Table Operations...');
           // Insert new user
           const insertResult = await readwriteClient.query(`
-            INSERT INTO app.users (email, username, role) 
+            INSERT INTO app.users (email, username, role)
             VALUES ('test@test.com', 'test_user', 'user')
             RETURNING id, email, username, role;
           `);
@@ -473,7 +473,7 @@ describe('DatabaseManager Integration Tests', () => {
 
           // Update user
           await readwriteClient.query(`
-            UPDATE app.users 
+            UPDATE app.users
             SET username = 'updated_user'
             WHERE email = 'test@test.com';
           `);
@@ -569,15 +569,15 @@ describe('DatabaseManager Integration Tests', () => {
           await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
 
           await readwriteClient.query(`
-            UPDATE app.users 
+            UPDATE app.users
             SET username = 'trigger_updated'
             WHERE email = 'trigger@test.com'
             RETURNING updated_at;
           `);
 
           const afterUpdate = await readwriteClient.query(`
-            SELECT updated_at 
-            FROM app.users 
+            SELECT updated_at
+            FROM app.users
             WHERE email = 'trigger@test.com';
           `);
 
