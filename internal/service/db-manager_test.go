@@ -74,16 +74,15 @@ func (r *fakeRows) Close() {
 // busy models pgx's single-connection rule: Exec while a result set is open
 // on the same conn must fail.
 type fakeDB struct {
-	databases      []string
-	schemas        []string
-	matviews       map[string][]string
-	views          map[string][]string
-	foreignServers []string
-	roles          map[string]bool
-	execs          []string
-	queries        []string
-	busy           bool
-	onClose        func()
+	databases []string
+	schemas   []string
+	matviews  map[string][]string
+	views     map[string][]string
+	roles     map[string]bool
+	execs     []string
+	queries   []string
+	busy      bool
+	onClose   func()
 }
 
 // systemDatabases mirrors the NOT IN filter of the real pg_database query.
@@ -141,9 +140,6 @@ func (d *fakeDB) query(sql string, args ...any) (Rows, error) {
 		schema, _ := args[0].(string)
 
 		return &fakeRows{vals: toAny(d.views[schema])}, nil
-	case strings.Contains(sql, "pg_foreign_server"):
-
-		return &fakeRows{vals: toAny(d.foreignServers)}, nil
 	default:
 		return nil, fmt.Errorf("fake: unexpected query %q", sql)
 	}
@@ -208,12 +204,11 @@ func testHarness(databases, schemas []string, existingRoles map[string]bool) (*D
 			continue // admin connection already created above
 		}
 		conn.dbs[db] = &fakeDB{
-			schemas:        schemas,
-			matviews:       map[string][]string{appSchema: {"post_stats"}},
-			views:          map[string][]string{appSchema: {"active_users"}},
-			foreignServers: []string{"fdw"},
-			roles:          existingRoles,
-			onClose:        func() { conn.closed = append(conn.closed, db) },
+			schemas:  schemas,
+			matviews: map[string][]string{appSchema: {"post_stats"}},
+			views:    map[string][]string{appSchema: {"active_users"}},
+			roles:    existingRoles,
+			onClose:  func() { conn.closed = append(conn.closed, db) },
 		}
 	}
 
@@ -408,7 +403,6 @@ func TestReadWriteRoleGrants(t *testing.T) {
 	}
 
 	want := []string{
-		`GRANT USAGE ON FOREIGN SERVER "fdw" TO "db1.readwrite"`,
 		`GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA "app" TO "db1.readwrite"`,
 		`ALTER DEFAULT PRIVILEGES IN SCHEMA "app" GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO "db1.readwrite"`,
 		`GRANT SELECT ON "app"."post_stats" TO "db1.readwrite"`,

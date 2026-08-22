@@ -17,9 +17,9 @@ Per database, `pg-genrole` creates `{database}.read` and `{database}.readwrite` 
 | Materialized views                   | OWNER (incl. ALTER, REFRESH, DROP) | ❌      | ✅           |
 | Sequences                            | USAGE, SELECT                      | ✅      | ✅           |
 | Functions                            | EXECUTE                            | ✅      | ✅           |
-| Foreign servers                      | USAGE                              | ❌      | ✅           |
+| DDL modification (CREATE, ALTER, DROP) | ❌                                | ❌      | ❌           |
 
-> ⚠️ `.readwrite` takes ownership of materialized views — it can refresh, alter, or drop them. Views only get SELECT.
+> ⚠️ Neither role can run DDL — `USAGE` on schemas is granted but never `CREATE`, so both roles are denied CREATE/ALTER/DROP. Exception: `.readwrite` takes ownership of materialized views, so it can refresh, alter, or drop *those*. Views only get SELECT.
 
 ## E2E Guide
 

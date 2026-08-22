@@ -151,19 +151,6 @@ func expectDenied(t *testing.T, conn *pgx.Conn, sql string) {
 	}
 }
 
-// assertServerPrivilege asserts whether conn's user has USAGE on a foreign server.
-func assertServerPrivilege(t *testing.T, conn *pgx.Conn, server string, want bool) {
-	t.Helper()
-	var got bool
-	if err := conn.QueryRow(context.Background(),
-		"SELECT has_server_privilege(current_user, $1, 'USAGE')", server).Scan(&got); err != nil {
-		t.Fatalf("check USAGE on foreign server %s: %v", server, err)
-	}
-	if got != want {
-		t.Errorf("USAGE on foreign server %s = %v, want %v", server, got, want)
-	}
-}
-
 // setup recreates test users and databases with full schema, functions,
 // triggers, views, materialized views and sample data.
 func setup(t *testing.T, dbs []string) {
@@ -173,9 +160,6 @@ func setup(t *testing.T, dbs []string) {
 		execSQL(t, admin, "DROP ROLE IF EXISTS "+u)
 		execSQL(t, admin, fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s'", u, testPass))
 	}
-	// Cluster-wide objects used by the foreign-server permission checks.
-	execSQL(t, admin, "CREATE FOREIGN DATA WRAPPER IF NOT EXISTS dummy_fdw")
-	execSQL(t, admin, "CREATE SERVER IF NOT EXISTS dummy_server FOREIGN DATA WRAPPER dummy_fdw")
 	for _, db := range dbs {
 		execSQL(t, admin, "DROP DATABASE IF EXISTS "+db)
 		execSQL(t, admin, "CREATE DATABASE "+db)
@@ -345,7 +329,7 @@ func TestReadWriteRolePermissions(t *testing.T) {
 }
 
 //nolint:paralleltest // e2e tests share one dockerized postgres; cannot run in parallel
-func TestDefaultPrivilegesAndForeignServers(t *testing.T) {
+func TestDefaultPrivileges(t *testing.T) {
 	setup(t, testDBs)
 	runGenrole(t)
 	grantRoles(t, testDBs)
@@ -359,12 +343,10 @@ func TestDefaultPrivilegesAndForeignServers(t *testing.T) {
 		read := mustConnect(t, db, readUser, testPass)
 		mustQuery(t, read, "SELECT note FROM app.new_table")
 		expectDenied(t, read, "INSERT INTO app.new_table (id, note) VALUES (2, 'no')")
-		assertServerPrivilege(t, read, "dummy_server", false)
 
 		rw := mustConnect(t, db, rwUser, testPass)
 		mustQuery(t, rw, "SELECT note FROM app.new_table")
 		execSQL(t, rw, "INSERT INTO app.new_table (id, note) VALUES (2, 'yes')")
-		assertServerPrivilege(t, rw, "dummy_server", true)
 	}
 }
 

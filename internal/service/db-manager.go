@@ -151,12 +151,6 @@ func (m *DatabaseManager) grantPermissions(ctx context.Context, database, role s
 		return fmt.Errorf("grant connect on %s: %w", database, err)
 	}
 
-	if readwrite {
-		if err := grantForeignServers(ctx, conn, role); err != nil {
-			return err
-		}
-	}
-
 	schemas, err := listSchemas(ctx, conn)
 	if err != nil {
 		return err
@@ -307,36 +301,6 @@ func roleExists(ctx context.Context, conn Querier, role string) (bool, error) {
 	defer rows.Close()
 
 	return rows.Next(), rows.Err()
-}
-
-func grantForeignServers(ctx context.Context, conn Querier, role string) error {
-	rows, err := conn.Query(ctx, `SELECT srvname FROM pg_foreign_server`)
-	if err != nil {
-		return fmt.Errorf("list foreign servers: %w", err)
-	}
-	defer rows.Close()
-
-	// Drain rows before executing grants: pgx holds the single connection
-	// busy while a result set is open, so Exec on the same conn would fail.
-	var names []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return fmt.Errorf("scan foreign server name: %w", err)
-		}
-		names = append(names, name)
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("iterate foreign servers: %w", err)
-	}
-
-	for _, name := range names {
-		if err := exec(ctx, conn, fmt.Sprintf("GRANT USAGE ON FOREIGN SERVER %s TO %s", ident(name), ident(role))); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func exec(ctx context.Context, conn Querier, sql string) error {
