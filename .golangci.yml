@@ -1,0 +1,20 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - gosec
+  settings:
+    staticcheck:
+      # SA1019/ST1000/ST1003 carried over from staticcheck.conf (will be
+      # fixed in a future PR - see that file for the original notes).
+      #
+      # QF* (quickfix) excluded for now: the standalone `staticcheck` binary
+      # never ran these by default (they're gated behind a hidden
+      # --debug.run-quickfix-analyzers flag that defaults to off), but
+      # golangci-lint's staticcheck linter enables them unconditionally.
+      # Excluding them here preserves the old effective behavior rather than
+      # suddenly failing on a whole new check category repo-wide.
+      checks: ["all", "-SA1019", "-ST1000", "-ST1003", "-QF*"]
