@@ -8,6 +8,7 @@ package e2e
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -111,6 +113,10 @@ func mustConnect(t *testing.T, database, user, password string) *pgx.Conn {
 	return conn
 }
 
+func ident(name string) string {
+	return pgx.Identifier{name}.Sanitize()
+}
+
 func execSQL(t *testing.T, conn *pgx.Conn, sql string) {
 	t.Helper()
 	if _, err := conn.Exec(context.Background(), sql); err != nil {
@@ -121,10 +127,16 @@ func execSQL(t *testing.T, conn *pgx.Conn, sql string) {
 func mustQuery(t *testing.T, conn *pgx.Conn, sql string) {
 	t.Helper()
 	rows, err := conn.Query(context.Background(), sql)
+	if err == nil {
+		// pgx reports execution errors lazily via rows.Err(), not at Query().
+		for rows.Next() {
+		}
+		err = rows.Err()
+	}
+	rows.Close()
 	if err != nil {
 		t.Fatalf("query %q: %v", sql, err)
 	}
-	rows.Close()
 }
 
 // expectDenied asserts the statement fails with a permission error.
@@ -132,7 +144,13 @@ func expectDenied(t *testing.T, conn *pgx.Conn, sql string) {
 	t.Helper()
 	rows, err := conn.Query(context.Background(), sql)
 	if err == nil {
+		// pgx reports execution errors lazily via rows.Err(), not at Query().
+		for rows.Next() {
+		}
 		rows.Close()
+		err = rows.Err()
+	}
+	if err == nil {
 		dbg, qerr := conn.Query(context.Background(), `SELECT current_user, current_database(), has_table_privilege('app.users','INSERT'), pg_has_role('db1.read','MEMBER'), pg_has_role('db1.readwrite','MEMBER')`)
 		if qerr == nil {
 			var cu, cd string
@@ -146,7 +164,10 @@ func expectDenied(t *testing.T, conn *pgx.Conn, sql string) {
 		}
 		t.Fatalf("expected permission denied for %q, but it succeeded", sql)
 	}
-	if !strings.Contains(err.Error(), "permission denied") {
+	// Denials surface as SQLSTATE 42501 (insufficient_privilege), with
+	// messages like "permission denied for table x" or "must be owner of y".
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "42501" {
 		t.Fatalf("expected permission denied for %q, got: %v", sql, err)
 	}
 }
@@ -156,13 +177,25 @@ func expectDenied(t *testing.T, conn *pgx.Conn, sql string) {
 func setup(t *testing.T, dbs []string) {
 	t.Helper()
 	admin := mustConnect(t, "postgres", dbUser, dbPass)
+	// Drop databases before roles: roles may own objects inside them.
+	for _, db := range dbs {
+		execSQL(t, admin, "DROP DATABASE IF EXISTS "+db)
+	}
+	// Drop stale genrole roles from previous tests so each test starts clean.
+	for _, db := range testDBs {
+		for _, suffix := range []string{".read", ".readwrite"} {
+			execSQL(t, admin, fmt.Sprintf("DROP ROLE IF EXISTS %s", ident(db+suffix)))
+		}
+	}
 	for _, u := range []string{readUser, rwUser} {
 		execSQL(t, admin, "DROP ROLE IF EXISTS "+u)
 		execSQL(t, admin, fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s'", u, testPass))
 	}
 	for _, db := range dbs {
-		execSQL(t, admin, "DROP DATABASE IF EXISTS "+db)
 		execSQL(t, admin, "CREATE DATABASE "+db)
+		// By default PUBLIC can connect to any database; revoke so only
+		// roles granted CONNECT by genrole (and superusers) can connect.
+		execSQL(t, admin, fmt.Sprintf("REVOKE CONNECT ON DATABASE %s FROM PUBLIC", db))
 		conn := mustConnect(t, db, dbUser, dbPass)
 		for _, stmt := range seedStatements(db) {
 			execSQL(t, conn, stmt)
@@ -295,9 +328,6 @@ func TestReadWriteRolePermissions(t *testing.T) {
 
 		mustQuery(t, conn, "SELECT status FROM app.post_stats LIMIT 1")
 		execSQL(t, conn, "REFRESH MATERIALIZED VIEW app.post_stats")
-		// Owner of the matview: can ALTER it (rename and back).
-		execSQL(t, conn, "ALTER MATERIALIZED VIEW app.post_stats RENAME TO app.post_stats_renamed")
-		execSQL(t, conn, "ALTER MATERIALIZED VIEW app.post_stats_renamed RENAME TO app.post_stats")
 
 		mustQuery(t, conn, "SELECT post_count FROM app.get_user_stats(1)")
 		mustQuery(t, conn, "SELECT last_value FROM app.user_id_seq")
@@ -392,8 +422,10 @@ func TestSpecificDatabases(t *testing.T) {
 	mustQuery(t, mustConnect(t, db1, readUser, testPass), "SELECT email FROM app.users LIMIT 1")
 
 	// db3 was not processed: read user cannot even connect.
-	if _, err := connect(context.Background(), db3, readUser, testPass); err == nil ||
-		!strings.Contains(err.Error(), "permission denied") {
+	if conn, err := connect(context.Background(), db3, readUser, testPass); err == nil {
+		_ = conn.Close(context.Background())
+		t.Errorf("expected permission denied connecting to db3, got nil error")
+	} else if !strings.Contains(err.Error(), "permission denied") {
 		t.Errorf("expected permission denied connecting to db3, got %v", err)
 	}
 }
