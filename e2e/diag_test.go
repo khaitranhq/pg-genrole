@@ -39,6 +39,8 @@ func TestDiagRepro(t *testing.T) {
 
 	// Did the row actually get inserted?
 	var cnt int
-	admin.QueryRow(ctx, "SELECT count(*) FROM app.new_table WHERE id = 2").Scan(&cnt)
+	if err := admin.QueryRow(ctx, "SELECT count(*) FROM app.new_table WHERE id = 2").Scan(&cnt); err != nil {
+		t.Fatalf("count inserted rows: %v", err)
+	}
 	t.Logf("rows with id=2 after attempted INSERT = %d", cnt)
 }

@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+.env.*
+docker
+e2e
+README.md
+LICENSE
+AGENTS.md
+*.md
+Dockerfile*

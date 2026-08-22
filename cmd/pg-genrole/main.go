@@ -10,6 +10,8 @@ import (
 	"github.com/khaitranhq/pg-genrole/internal/service"
 )
 
+const currentVersion = "v0.0.1"
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -25,8 +27,14 @@ func run() error {
 		password  = flag.String("password", "", "PostgreSQL password")
 		databases = flag.String("databases", "", "comma-separated databases to process; all databases if empty")
 		debug     = flag.Bool("debug", false, "enable debug logging")
+		version   = flag.Bool("version", false, "print version and exit")
 	)
 	flag.Parse()
+
+	if *version {
+		fmt.Println(currentVersion)
+		return nil
+	}
 
 	if *host == "" || *user == "" || *password == "" || *port == 0 {
 		flag.Usage()

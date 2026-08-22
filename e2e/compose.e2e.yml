@@ -16,3 +16,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  pg-genrole:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - -host=postgres
+      - -port=5432
+      - -user=postgres
+      - -password=postgres
+      - -debug
